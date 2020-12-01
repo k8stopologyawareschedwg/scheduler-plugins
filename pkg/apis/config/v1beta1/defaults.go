@@ -129,3 +129,10 @@ func SetDefaultLoadVariationRiskBalancingArgs(args *LoadVariationRiskBalancingAr
 		args.SafeVarianceSensitivity = &DefaultSafeVarianceSensitivity
 	}
 }
+
+// SetDefaultsNodeResourceTopologyMatchArgs sets the default parameters for NodeResourceTopologyMatch plugin.
+func SetDefaultsNodeResourceTopologyMatchArgs(obj *NodeResourceTopologyMatchArgs) {
+	if obj.KubeConfigPath == nil {
+		obj.KubeConfigPath = &defaultKubeConfigPath
+	}
+}
