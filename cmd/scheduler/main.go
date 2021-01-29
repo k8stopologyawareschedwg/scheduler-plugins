@@ -49,7 +49,7 @@ func main() {
 		app.WithPlugin(loadvariationriskbalancing.Name, loadvariationriskbalancing.New),
 		app.WithPlugin(noderesources.AllocatableName, noderesources.NewAllocatable),
 		app.WithPlugin(targetloadpacking.Name, targetloadpacking.New),
-		app.WithPlugin(noderesourcetopology.NodeResourceTopologyMatchName, noderesourcetopology.NewNodeResourceTopologyMatch),
+		app.WithPlugin(noderesourcetopology.Name, noderesourcetopology.New),
 		// Sample plugins below.
 		app.WithPlugin(crossnodepreemption.Name, crossnodepreemption.New),
 		app.WithPlugin(podstate.Name, podstate.New),
