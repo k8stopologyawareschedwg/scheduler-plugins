@@ -136,7 +136,7 @@ type LoadVariationRiskBalancingArgs struct {
 type NodeResourceTopologyMatchArgs struct {
 	metav1.TypeMeta `json:",inline"`
 
-	KubeConfigPath *string `json:"kubeconfigpath,omitempty"`
-	MasterOverride *string `json:"masteroverride,omitempty"`
-	Namespace      *string `json:"namespace,omitempty"`
+	KubeConfigPath *string  `json:"kubeconfigpath,omitempty"`
+	MasterOverride *string  `json:"masteroverride,omitempty"`
+	Namespaces     []string `json:"namespaces,omitempty"`
 }
