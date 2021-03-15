@@ -102,12 +102,18 @@ func SingleNUMAContainerLevelHandler(pod *v1.Pod, zones topologyv1alpha1.ZoneLis
 // checkResourcesForNUMANodes checks for sufficient resource, this function
 // requires NUMANodeList with properly populated NUMANode, NUMAID should be in range 0-63
 func checkResourcesForNUMANodes(nodes NUMANodeList, resources v1.ResourceList, qos v1.PodQOSClass) bm.BitMask {
-	bitmask := bm.NewEmptyBitMask()
-	bitmask.Fill()
+	var bits []int
+	for _, numaNode := range nodes {
+		bits = append(bits, numaNode.NUMAID)
+	}
+	bitmask, err := bm.NewBitMask(bits...)
+	if err != nil {
+		klog.Errorf("NUMA id is out of range: %v, %v", bits, err)
+		return nil
+	}
 
 	zeroQuantity := resource.MustParse("0")
 	for resource, quantity := range resources {
-		resourceBitmask := bm.NewEmptyBitMask()
 		for _, numaNode := range nodes {
 			numaQuantity, ok := numaNode.Resources[resource]
 			// if can't find requested resource on the node - skip (don't set it as available NUMA node)
@@ -120,15 +126,15 @@ func checkResourcesForNUMANodes(nodes NUMANodeList, resources v1.ResourceList, q
 			// 2. set numa node as possible node if resource is cpu and it's not guaranteed QoS, since cpu will flow
 			// 3. set numa node as possible node if zero quantity for non existing resource was requested
 			// 4. otherwise check amount of resources
-			if resource == v1.ResourceMemory ||
+			// unset bit if conditions are not met
+			if !(resource == v1.ResourceMemory ||
 				strings.HasPrefix(string(resource), v1.ResourceHugePagesPrefix) ||
 				resource == v1.ResourceCPU && qos != v1.PodQOSGuaranteed ||
 				quantity.Cmp(zeroQuantity) == 0 ||
-				numaQuantity.Cmp(quantity) >= 0 {
-				resourceBitmask.Add(numaNode.NUMAID)
+				numaQuantity.Cmp(quantity) >= 0) {
+				bitmask.Remove(numaNode.NUMAID)
 			}
 		}
-		bitmask.And(resourceBitmask)
 	}
 	return bitmask
 }
@@ -149,9 +155,10 @@ func SingleNUMAPodLevelHandler(pod *v1.Pod, zones topologyv1alpha1.ZoneList) *fr
 	}
 
 	nodes := createNUMANodeList(zones)
+
 	resBitmask := checkResourcesForNUMANodes(nodes, resources, v1qos.GetPodQOS(pod))
 
-	if resBitmask.IsEmpty() {
+	if resBitmask == nil || resBitmask.IsEmpty() {
 		// definitely we can't align container, so we can't align a pod
 		return framework.NewStatus(framework.Unschedulable, fmt.Sprintf("Cannot align pod: %s", pod.Name))
 	}
