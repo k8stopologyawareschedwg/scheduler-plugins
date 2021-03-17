@@ -3,7 +3,6 @@ kind: KubeSchedulerConfiguration
 leaderElection:
   leaderElect: false
 clientConnection:
-  # kubeconfig: "REPLACE_ME_WITH_KUBE_CONFIG_PATH"
   kubeconfig: "/etc/kubernetes/scheduler.conf"
 profiles:
 - schedulerName: topo-aware-scheduler
@@ -15,11 +14,9 @@ profiles:
   pluginConfig:
   - name: NodeResourceTopologyMatch
     args:
-      # kubeconfig: "REPLACE_ME_WITH_KUBE_CONFIG_PATH"
       kubeconfigpath: "/etc/kubernetes/scheduler.conf"
       namespaces: ["test-namespace"]
   - name: NumaNodeScorer
     args:
-      # kubeconfig: "REPLACE_ME_WITH_KUBE_CONFIG_PATH"
       kubeconfigpath: "/etc/kubernetes/scheduler.conf"
       namespaces: ["test-namespace"]
