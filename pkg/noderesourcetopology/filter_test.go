@@ -1,12 +1,9 @@
 /*
 Copyright 2021 The Kubernetes Authors.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -28,8 +25,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	intstr "k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/client-go/tools/cache"
-	"k8s.io/klog/v2"
 	framework "k8s.io/kubernetes/pkg/scheduler/framework/v1alpha1"
 )
 
@@ -37,72 +32,12 @@ const nicResourceName = "vendor/nic1"
 const notExistingNICResourceName = "vendor/notexistingnic"
 const containerName = "container1"
 
-func makePodByResourceList(resources *v1.ResourceList) *v1.Pod {
-	return &v1.Pod{Spec: v1.PodSpec{Containers: []v1.Container{{
-		Resources: v1.ResourceRequirements{
-			Requests: *resources,
-			Limits:   *resources,
-		},
-	}},
-	}}
-}
-
-type nodeTopologyMap map[string]topologyv1alpha1.NodeResourceTopology
-
 type topologyMatchTests []struct {
 	pod            *v1.Pod
 	nodeTopologies nodeTopologyMap
 	name           string
 	node           v1.Node
 	wantStatus     *framework.Status
-}
-
-// no no mock only indexer
-type mockIndexer struct {
-	nodeTopologies nodeTopologyMap
-}
-
-func (m mockIndexer) ByIndex(indexName, indexKey string) ([]interface{}, error)      { return nil, nil }
-func (m mockIndexer) AddIndexers(cache.Indexers) error                               { return nil }
-func (m mockIndexer) GetIndexers() cache.Indexers                                    { return nil }
-func (m mockIndexer) ListIndexFuncValues(indexName string) []string                  { return nil }
-func (m mockIndexer) Index(indexName string, obj interface{}) ([]interface{}, error) { return nil, nil }
-func (m mockIndexer) IndexKeys(indexName, indexedValue string) ([]string, error)     { return nil, nil }
-
-func (m mockIndexer) Add(interface{}) error               { return nil }
-func (m mockIndexer) Update(obj interface{}) error        { return nil }
-func (m mockIndexer) Delete(obj interface{}) error        { return nil }
-func (m mockIndexer) List() []interface{}                 { return nil }
-func (m mockIndexer) ListKeys() []string                  { return nil }
-func (m mockIndexer) Replace([]interface{}, string) error { return nil }
-func (m mockIndexer) Resync() error                       { return nil }
-func (m mockIndexer) Get(obj interface{}) (item interface{}, exists bool, err error) {
-	return nil, false, nil
-}
-
-func (m mockIndexer) GetByKey(key string) (item interface{}, exists bool, err error) {
-	if v, ok := m.nodeTopologies[key]; ok {
-		return &v, ok, nil
-	}
-	return nil, false, fmt.Errorf("Node topology is not found: %v", key)
-}
-
-func makeResourceListFromZones(zones topologyv1alpha1.ZoneList) v1.ResourceList {
-	result := make(v1.ResourceList)
-	for _, zone := range zones {
-		for _, resInfo := range zone.Resources {
-			resQuantity, err := resource.ParseQuantity(resInfo.Allocatable.String())
-			if err != nil {
-				klog.Errorf("Failed to parse %s", resInfo.Allocatable.String())
-				continue
-			}
-			if quantity, ok := result[v1.ResourceName(resInfo.Name)]; ok {
-				resQuantity.Add(quantity)
-			}
-			result[v1.ResourceName(resInfo.Name)] = resQuantity
-		}
-	}
-	return result
 }
 
 func makePodByResourceListWithManyContainers(resources *v1.ResourceList, containerCount int) *v1.Pod {
@@ -128,8 +63,10 @@ func runTests(t *testing.T, topologyTests topologyMatchTests) {
 					topologyv1alpha1.SingleNUMANodePodLevel:       SingleNUMAPodLevelHandler,
 					topologyv1alpha1.SingleNUMANodeContainerLevel: SingleNUMAContainerLevelHandler,
 				},
-				namespaces: []string{metav1.NamespaceDefault},
-				lister:     listerv1alpha1.NewNodeResourceTopologyLister(mockIndexer{nodeTopologies: test.nodeTopologies}),
+				data: commonPluginsData{
+					namespaces: []string{metav1.NamespaceDefault},
+					lister:     listerv1alpha1.NewNodeResourceTopologyLister(mockIndexer{nodeTopologies: test.nodeTopologies}),
+				},
 			}
 			nodeInfo.SetNode(&test.node)
 			test.pod.Spec.Containers[0].Name = containerName
