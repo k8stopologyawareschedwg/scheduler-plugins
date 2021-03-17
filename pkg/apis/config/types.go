@@ -122,3 +122,14 @@ type NodeResourceTopologyMatchArgs struct {
 	MasterOverride string
 	Namespaces     []string
 }
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// NumaNodeScorerArgs holds arguments used to configure the NumaNodeScorer plugin
+type NumaNodeScorerArgs struct {
+	metav1.TypeMeta
+
+	KubeConfigPath string
+	MasterOverride string
+	Namespaces     []string
+}

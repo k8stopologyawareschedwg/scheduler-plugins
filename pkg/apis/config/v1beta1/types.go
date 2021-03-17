@@ -123,3 +123,12 @@ type NodeResourceTopologyMatchArgs struct {
 	MasterOverride *string  `json:"masteroverride,omitempty"`
 	Namespaces     []string `json:"namespaces,omitempty"`
 }
+
+// NumaNodeScorerArgs holds arguments used to configure the NumaNodeScorer plugin
+type NumaNodeScorerArgs struct {
+	metav1.TypeMeta `json:",inline"`
+
+	KubeConfigPath *string  `json:"kubeconfigpath,omitempty"`
+	MasterOverride *string  `json:"masteroverride,omitempty"`
+	Namespaces     []string `json:"namespaces,omitempty"`
+}
