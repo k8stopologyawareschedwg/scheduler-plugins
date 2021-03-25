@@ -170,7 +170,7 @@ func New(args runtime.Object, handle framework.FrameworkHandle) (framework.Plugi
 		return nil, fmt.Errorf("want args to be of type NodeResourceTopologyMatchArgs, got %T", args)
 	}
 
-	nodeTopologyInformer, err := initNodeTopologyInformer(tcfg.MasterOverride, tcfg.KubeConfigPath)
+	nodeTopologyInformer, err := getNodeTopologyInformer(&tcfg.MasterOverride, &tcfg.KubeConfigPath)
 	if err != nil {
 		return nil, err
 	}
@@ -181,7 +181,7 @@ func New(args runtime.Object, handle framework.FrameworkHandle) (framework.Plugi
 			topologyv1alpha1.SingleNUMANodeContainerLevel: SingleNUMAContainerLevelHandler,
 		},
 		data: commonPluginsData{
-			lister:     nodeTopologyInformer.Lister(),
+			lister:     (*nodeTopologyInformer).Lister(),
 			namespaces: tcfg.Namespaces,
 		},
 	}

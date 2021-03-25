@@ -18,7 +18,7 @@ import (
 
 // return the name of the node with the highest score
 func findMaxScoreNode(nodeToScoreMap map[string]int64) string {
-	var max int64 = 0
+	max := int64(0)
 	electedNode := ""
 
 	for nodeName, score := range nodeToScoreMap {
@@ -54,20 +54,20 @@ func recalcResources(pod *v1.Pod, node *v1.Node) {
 // 2. It will fetch the fitted NUMA node object from the NodeResourceTopology
 // 3. Update the NUMA node's available resources
 func updateNrt(pod *v1.Pod, ntr *topologyv1alpha1.NodeResourceTopology) error {
-	var fittedNumaId int = -1
+	var fittedNUMAId int = -1
 	numaList := createNUMANodeList(ntr.Zones)
 
 	for _, numa := range numaList {
 		if isNumaFit(pod, &numa) {
-			fittedNumaId = numa.NUMAID
+			fittedNUMAId = numa.NUMAID
 			break
 		}
 	}
-	if fittedNumaId == -1 {
+	if fittedNUMAId == -1 {
 		return fmt.Errorf("Failed to find a fitted NUMA")
 	}
 
-	zone, err := getNumaZoneById(fittedNumaId, ntr.Zones)
+	zone, err := getNUMAZoneById(fittedNUMAId, ntr.Zones)
 	if err != nil {
 		return err
 	}
@@ -105,7 +105,7 @@ func isNumaFit(pod *v1.Pod, numa *NUMANode) bool {
 	return true
 }
 
-func getNumaZoneById(id int, zones topologyv1alpha1.ZoneList) (zone *topologyv1alpha1.Zone, err error) {
+func getNUMAZoneById(id int, zones topologyv1alpha1.ZoneList) (zone *topologyv1alpha1.Zone, err error) {
 	name := fmt.Sprintf("node-%d", id)
 	for _, zone := range zones {
 		if zone.Name == name {

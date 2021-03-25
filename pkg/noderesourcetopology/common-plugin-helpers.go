@@ -3,6 +3,7 @@ package noderesourcetopology
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	topologyv1alpha1 "github.com/k8stopologyawareschedwg/noderesourcetopology-api/pkg/apis/topology/v1alpha1"
 	topoclientset "github.com/k8stopologyawareschedwg/noderesourcetopology-api/pkg/generated/clientset/versioned"
@@ -13,6 +14,14 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/klog/v2"
+)
+
+// topologyInformerInstance is a Singelton object
+// Should not be accessed directly.
+// Should be accessed via getNodeTopologyInformer function
+var (
+	topologyInformerInstance v1alpha1.NodeResourceTopologyInformer
+	once                     sync.Once
 )
 
 // no no mock only indexer
@@ -61,10 +70,10 @@ func findNodeTopology(nodeName string, data *commonPluginsData) *topologyv1alpha
 	return nil
 }
 
-func initNodeTopologyInformer(masterOverride, kubeConfigPath string) (v1alpha1.NodeResourceTopologyInformer, error) {
-	kubeConfig, err := clientcmd.BuildConfigFromFlags(masterOverride, kubeConfigPath)
+func initNodeTopologyInformer(masterOverride, kubeConfigPath *string) (v1alpha1.NodeResourceTopologyInformer, error) {
+	kubeConfig, err := clientcmd.BuildConfigFromFlags(*masterOverride, *kubeConfigPath)
 	if err != nil {
-		klog.Errorf("Cannot create kubeconfig based on: %s, %s, %v", masterOverride, kubeConfigPath, err)
+		klog.Errorf("Cannot create kubeconfig based on: %s, %s, %v", *masterOverride, *kubeConfigPath, err)
 		return nil, err
 	}
 
@@ -79,6 +88,18 @@ func initNodeTopologyInformer(masterOverride, kubeConfigPath string) (v1alpha1.N
 	topologyInformerFactory.Start(ctx.Done())
 	topologyInformerFactory.WaitForCacheSync(ctx.Done())
 	return topologyInformerFactory.Topology().V1alpha1().NodeResourceTopologies(), nil
+}
+
+// getNodeTopologyInformer will init v1alpha1.NodeResourceTopologyInformer once and return it.
+// if v1alpha1.NodeResourceTopologyInformer already initilized, the same instance will be return
+func getNodeTopologyInformer(masterOverride, kubeConfigPath *string) (*v1alpha1.NodeResourceTopologyInformer, error) {
+	var err error
+
+	once.Do(func() {
+		topologyInformerInstance, err = initNodeTopologyInformer(masterOverride, kubeConfigPath)
+	})
+
+	return &topologyInformerInstance, err
 }
 
 func extractResources(zone topologyv1alpha1.Zone) v1.ResourceList {

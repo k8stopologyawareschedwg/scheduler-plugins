@@ -15,7 +15,7 @@ import (
 
 const (
 	// Name is the name of the plugin used in the plugin registry and configurations.
-	ScorerName = "NumaNodeScorer"
+	LeastAllocatableName = "NodeResourceTopologyLeastAllocatableScore"
 
 	// TODO create dynamic customizable resource weight
 	defaultResourceWeight int64 = 1
@@ -31,7 +31,7 @@ type NumaNodeScorer struct {
 var _ framework.ScorePlugin = &NumaNodeScorer{}
 
 func (nns *NumaNodeScorer) Name() string {
-	return ScorerName
+	return LeastAllocatableName
 }
 
 func (nns *NumaNodeScorer) Score(ctx context.Context, state *framework.CycleState, pod *v1.Pod, nodeName string) (int64, *framework.Status) {
@@ -125,14 +125,14 @@ func NewNumaNodeScorer(args runtime.Object, handle framework.FrameworkHandle) (f
 		return nil, fmt.Errorf("want args to be of type NodeResourceTopologyMatchArgs, got %T", args)
 	}
 
-	nodeTopologyInformer, err := initNodeTopologyInformer(nnsArgs.MasterOverride, nnsArgs.KubeConfigPath)
+	nodeTopologyInformer, err := getNodeTopologyInformer(&nnsArgs.MasterOverride, &nnsArgs.KubeConfigPath)
 	if err != nil {
 		return nil, err
 	}
 
 	numaNodeScorer := &NumaNodeScorer{
 		data: commonPluginsData{
-			lister:     nodeTopologyInformer.Lister(),
+			lister:     (*nodeTopologyInformer).Lister(),
 			namespaces: nnsArgs.Namespaces,
 		},
 	}
