@@ -48,7 +48,7 @@ func main() {
 		app.WithPlugin(coscheduling.Name, coscheduling.New),
 		app.WithPlugin(noderesources.AllocatableName, noderesources.NewAllocatable),
 		app.WithPlugin(noderesourcetopology.Name, noderesourcetopology.New),
-		app.WithPlugin(noderesourcetopology.LeastAllocatableName, noderesourcetopology.NewNumaNodeScorer),
+		app.WithPlugin(noderesourcetopology.ResourceAllocationName, noderesourcetopology.NewResourceAllocationScore),
 		app.WithPlugin(targetloadpacking.Name, targetloadpacking.New),
 		// Sample plugins below.
 		app.WithPlugin(crossnodepreemption.Name, crossnodepreemption.New),

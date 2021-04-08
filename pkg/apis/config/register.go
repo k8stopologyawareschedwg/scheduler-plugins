@@ -42,7 +42,7 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&CapacitySchedulingArgs{},
 		&TargetLoadPackingArgs{},
 		&NodeResourceTopologyMatchArgs{},
-		&NumaNodeScorerArgs{},
+		&ResourceAllocationScoreArgs{},
 	)
 	return nil
 }

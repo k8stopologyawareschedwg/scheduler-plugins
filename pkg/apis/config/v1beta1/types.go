@@ -124,11 +124,14 @@ type NodeResourceTopologyMatchArgs struct {
 	Namespaces     []string `json:"namespaces,omitempty"`
 }
 
-// NumaNodeScorerArgs holds arguments used to configure the NumaNodeScorer plugin
-type NumaNodeScorerArgs struct {
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// ResourceAllocationScoreArgs holds arguments used to configure the ResourceAllocationScore plugin
+type ResourceAllocationScoreArgs struct {
 	metav1.TypeMeta `json:",inline"`
 
-	KubeConfigPath *string  `json:"kubeconfigpath,omitempty"`
-	MasterOverride *string  `json:"masteroverride,omitempty"`
-	Namespaces     []string `json:"namespaces,omitempty"`
+	KubeConfigPath          *string  `json:"kubeconfigpath,omitempty"`
+	MasterOverride          *string  `json:"masteroverride,omitempty"`
+	Namespaces              []string `json:"namespaces,omitempty"`
+	ScoreSchedulingStrategy *string  `json:"scoreschedulingstrategy,omitempty"`
 }
