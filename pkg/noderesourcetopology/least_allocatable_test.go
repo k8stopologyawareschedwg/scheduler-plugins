@@ -246,7 +246,8 @@ func TestScorePlugin(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			numaNodeScorer := &NumaNodeScorer{
+			NewResourceAllocationScorer := &resourceAllocationScorer{
+				scoreStrategy: getScoreStrategy("leastAllocatable"),
 				data: commonPluginsData{
 					lister:     listerv1alpha1.NewNodeResourceTopologyLister(mockIndexer{nodeTopologies: nodeTopologies}),
 					namespaces: []string{metav1.NamespaceDefault},
@@ -256,7 +257,7 @@ func TestScorePlugin(t *testing.T) {
 				nodeToScoreMap := make(map[string]int64, len(nodesMap))
 
 				for _, node := range nodesMap {
-					score, gotStatus := numaNodeScorer.Score(
+					score, gotStatus := NewResourceAllocationScorer.Score(
 						context.Background(),
 						framework.NewCycleState(),
 						req.pod,
@@ -284,7 +285,7 @@ func TestScorePlugin(t *testing.T) {
 				// since a request has been fulfiled by the elected node,
 				// we should recalculate the amount of it's allocatable resources
 				recalcResources(req.pod, nodesMap[actualNodeName])
-				err := updateNrt(req.pod, findNodeTopology(actualNodeName, &numaNodeScorer.data))
+				err := updateNrt(req.pod, findNodeTopology(actualNodeName, &NewResourceAllocationScorer.data))
 				if err != nil {
 					t.Errorf("Failed to update node topology for %v. error:%v", actualNodeName, err)
 				}
