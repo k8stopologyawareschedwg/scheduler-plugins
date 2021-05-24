@@ -132,7 +132,13 @@ func resMatchNUMANodes(nodes NUMANodeList, resources v1.ResourceList, qos v1.Pod
 				resourceBitmask.Add(numaNode.NUMAID)
 			}
 		}
-		bitmask.And(resourceBitmask)
+
+		// temporary workaround which skips the memory check
+		// this is necessary until podresourceAPI will support propagation of memory information
+		// without this skip the resMatchNUMANodes function will disqualifies all nodes
+		if resource != v1.ResourceMemory {
+			bitmask.And(resourceBitmask)
+		}
 		if bitmask.IsEmpty() {
 			return true
 		}
