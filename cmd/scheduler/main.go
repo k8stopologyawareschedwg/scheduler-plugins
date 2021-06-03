@@ -33,6 +33,7 @@ import (
 	"sigs.k8s.io/scheduler-plugins/pkg/qos"
 	"sigs.k8s.io/scheduler-plugins/pkg/trimaran/loadvariationriskbalancing"
 	"sigs.k8s.io/scheduler-plugins/pkg/trimaran/targetloadpacking"
+
 	// Ensure scheme package is initialized.
 	_ "sigs.k8s.io/scheduler-plugins/pkg/apis/config/scheme"
 )
@@ -48,7 +49,8 @@ func main() {
 		app.WithPlugin(coscheduling.Name, coscheduling.New),
 		app.WithPlugin(loadvariationriskbalancing.Name, loadvariationriskbalancing.New),
 		app.WithPlugin(noderesources.AllocatableName, noderesources.NewAllocatable),
-		app.WithPlugin(noderesourcetopology.Name, noderesourcetopology.New),
+		app.WithPlugin(noderesourcetopology.FilterPluginName, noderesourcetopology.New),
+		app.WithPlugin(noderesourcetopology.ScorePluginName, noderesourcetopology.NewResourceAllocationScore),
 		app.WithPlugin(targetloadpacking.Name, targetloadpacking.New),
 		// Sample plugins below.
 		app.WithPlugin(crossnodepreemption.Name, crossnodepreemption.New),

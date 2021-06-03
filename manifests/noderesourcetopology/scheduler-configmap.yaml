@@ -17,6 +17,9 @@ data:
             filter:
               enabled:
                 - name: NodeResourceTopologyMatch
+            score:
+              enabled:
+                - name: NodeResourceTopologyResourceAllocationScore
           # optional plugin configs
           pluginConfig:
           - name: NodeResourceTopologyMatch
@@ -24,3 +27,9 @@ data:
               kubeconfigpath: "/etc/kubernetes/scheduler.conf"
               namespaces:
               - "test-namespace"
+          - name: NodeResourceTopologyResourceAllocationScore
+            args:
+              kubeconfigpath: "/etc/kubernetes/scheduler.conf"
+              namespaces:
+              - "test-namespace"
+              scoreschedulingstrategy: "least-allocatable"
