@@ -140,3 +140,16 @@ type NodeResourceTopologyMatchArgs struct {
 	MasterOverride *string  `json:"masteroverride,omitempty"`
 	Namespaces     []string `json:"namespaces,omitempty"`
 }
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// NodeResourceTopologyResourceAllocationScoreArgs holds arguments used to configure the ResourceAllocationScore plugin
+type NodeResourceTopologyResourceAllocationScoreArgs struct {
+	metav1.TypeMeta `json:",inline"`
+
+	KubeConfigPath          *string  `json:"kubeconfigpath,omitempty"`
+	MasterOverride          *string  `json:"masteroverride,omitempty"`
+	Namespaces              []string `json:"namespaces,omitempty"`
+	ScoreSchedulingStrategy *string  `json:"scoreschedulingstrategy,omitempty"`
+	Resources []schedulerconfig.ResourceSpec `json:"resources,omitempty"`
+}

@@ -138,3 +138,16 @@ type NodeResourceTopologyMatchArgs struct {
 	MasterOverride string
 	Namespaces     []string
 }
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// NodeResourceTopologyResourceAllocationScoreArgs holds arguments used to configure the ResourceAllocationScore plugin
+type NodeResourceTopologyResourceAllocationScoreArgs struct {
+	metav1.TypeMeta
+
+	KubeConfigPath          string
+	MasterOverride          string
+	Namespaces              []string
+	ScoreSchedulingStrategy string
+	Resources               []schedulerconfig.ResourceSpec
+}
