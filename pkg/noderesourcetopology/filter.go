@@ -24,7 +24,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/klog/v2"
 	v1qos "k8s.io/kubernetes/pkg/apis/core/v1/helper/qos"
 	bm "k8s.io/kubernetes/pkg/kubelet/cm/topologymanager/bitmask"
@@ -32,14 +31,11 @@ import (
 	apiconfig "sigs.k8s.io/scheduler-plugins/pkg/apis/config"
 
 	topologyv1alpha1 "github.com/k8stopologyawareschedwg/noderesourcetopology-api/pkg/apis/topology/v1alpha1"
-	topoclientset "github.com/k8stopologyawareschedwg/noderesourcetopology-api/pkg/generated/clientset/versioned"
-	topologyinformers "github.com/k8stopologyawareschedwg/noderesourcetopology-api/pkg/generated/informers/externalversions"
-	listerv1alpha1 "github.com/k8stopologyawareschedwg/noderesourcetopology-api/pkg/generated/listers/topology/v1alpha1"
 )
 
 const (
-	// Name is the name of the plugin used in the plugin registry and configurations.
-	Name = "NodeResourceTopologyMatch"
+	// FilterPluginName is the name of the plugin used in the plugin registry and configurations.
+	FilterPluginName = "NodeResourceTopologyMatch"
 )
 
 var _ framework.FilterPlugin = &TopologyMatch{}
@@ -51,33 +47,12 @@ type PolicyHandlerMap map[topologyv1alpha1.TopologyManagerPolicy]PolicyHandler
 // TopologyMatch plugin which run simplified version of TopologyManager's admit handler
 type TopologyMatch struct {
 	policyHandlers PolicyHandlerMap
-	lister         listerv1alpha1.NodeResourceTopologyLister
-	namespaces     []string
+	data           commonPluginsData
 }
 
-type NUMANode struct {
-	NUMAID    int
-	Resources v1.ResourceList
-}
-
-type NUMANodeList []NUMANode
-
-// Name returns name of the plugin. It is used in logs, etc.
+// Name FilterPluginName returns name of the plugin. It is used in logs, etc.
 func (tm *TopologyMatch) Name() string {
-	return Name
-}
-
-func extractResources(zone topologyv1alpha1.Zone) v1.ResourceList {
-	res := make(v1.ResourceList)
-	for _, resInfo := range zone.Resources {
-		quantity, err := resource.ParseQuantity(resInfo.Allocatable.String())
-		if err != nil {
-			klog.Errorf("Failed to parse %s", resInfo.Allocatable.String())
-			continue
-		}
-		res[v1.ResourceName(resInfo.Name)] = quantity
-	}
-	return res
+	return FilterPluginName
 }
 
 func SingleNUMAContainerLevelHandler(pod *v1.Pod, zones topologyv1alpha1.ZoneList) *framework.Status {
@@ -162,43 +137,6 @@ func SingleNUMAPodLevelHandler(pod *v1.Pod, zones topologyv1alpha1.ZoneList) *fr
 	return nil
 }
 
-func createNUMANodeList(zones topologyv1alpha1.ZoneList) NUMANodeList {
-	nodes := make(NUMANodeList, 0)
-	for _, zone := range zones {
-		if zone.Type == "Node" {
-			var numaID int
-			_, err := fmt.Sscanf(zone.Name, "node-%d", &numaID)
-			if err != nil {
-				klog.Errorf("Invalid format: %v", zone.Name)
-				continue
-			}
-			if numaID > 63 || numaID < 0 {
-				klog.Errorf("Invalid NUMA id range: %v", numaID)
-				continue
-			}
-			resources := extractResources(zone)
-			nodes = append(nodes, NUMANode{NUMAID: numaID, Resources: resources})
-		}
-	}
-	return nodes
-}
-
-func (tm *TopologyMatch) findNodeTopology(nodeName string) *topologyv1alpha1.NodeResourceTopology {
-	klog.V(5).Infof("tm.namespaces: %s", tm.namespaces)
-	for _, namespace := range tm.namespaces {
-		// NodeTopology couldn't be placed in several namespaces simultaneously
-		nodeTopology, err := tm.lister.NodeResourceTopologies(namespace).Get(nodeName)
-		if err != nil {
-			klog.V(5).Infof("Cannot get NodeTopologies from NodeResourceTopologyNamespaceLister: %v", err)
-			continue
-		}
-		if nodeTopology != nil {
-			return nodeTopology
-		}
-	}
-	return nil
-}
-
 // Filter Now only single-numa-node supported
 func (tm *TopologyMatch) Filter(ctx context.Context, cycleState *framework.CycleState, pod *v1.Pod, nodeInfo *framework.NodeInfo) *framework.Status {
 	if nodeInfo.Node() == nil {
@@ -209,7 +147,7 @@ func (tm *TopologyMatch) Filter(ctx context.Context, cycleState *framework.Cycle
 	}
 
 	nodeName := nodeInfo.Node().Name
-	nodeTopology := tm.findNodeTopology(nodeName)
+	nodeTopology := findNodeTopology(nodeName, &tm.data)
 
 	if nodeTopology == nil {
 		return nil
@@ -236,33 +174,21 @@ func New(args runtime.Object, handle framework.FrameworkHandle) (framework.Plugi
 		return nil, fmt.Errorf("want args to be of type NodeResourceTopologyMatchArgs, got %T", args)
 	}
 
-	kubeConfig, err := clientcmd.BuildConfigFromFlags(tcfg.MasterOverride, tcfg.KubeConfigPath)
+	lister, err := getNodeTopologyLister(&tcfg.MasterOverride, &tcfg.KubeConfigPath)
 	if err != nil {
-		klog.Errorf("Cannot create kubeconfig based on: %s, %s, %v", tcfg.KubeConfigPath, tcfg.MasterOverride, err)
 		return nil, err
 	}
 
-	topoClient, err := topoclientset.NewForConfig(kubeConfig)
-	if err != nil {
-		klog.Errorf("Cannot create clientset for NodeTopologyResource: %s, %s", kubeConfig, err)
-		return nil, err
-	}
-
-	topologyInformerFactory := topologyinformers.NewSharedInformerFactory(topoClient, 0)
-	nodeTopologyInformer := topologyInformerFactory.Topology().V1alpha1().NodeResourceTopologies()
 	topologyMatch := &TopologyMatch{
 		policyHandlers: PolicyHandlerMap{
 			topologyv1alpha1.SingleNUMANodePodLevel:       SingleNUMAPodLevelHandler,
 			topologyv1alpha1.SingleNUMANodeContainerLevel: SingleNUMAContainerLevelHandler,
 		},
-		lister:     nodeTopologyInformer.Lister(),
-		namespaces: tcfg.Namespaces,
+		data: commonPluginsData{
+			pLister:    lister,
+			namespaces: tcfg.Namespaces,
+		},
 	}
-
-	klog.V(5).Infof("start nodeTopologyInformer")
-	ctx := context.Background()
-	topologyInformerFactory.Start(ctx.Done())
-	topologyInformerFactory.WaitForCacheSync(ctx.Done())
 
 	return topologyMatch, nil
 }
