@@ -64,12 +64,12 @@ func (r *resourceAllocationScorer) score(pod *v1.Pod, nodeName string) (int64, *
 	klog.V(5).Infof("nodeTopology: %v", nodeTopology)
 	calculateResourceAllocatableRequest(pod, nodeTopology)
 	resources, allocatablePerNUMA := calculateResourceAllocatableRequest(pod, nodeTopology)
-	return scoreHelper(resources, allocatablePerNUMA, r.scoreStrategy, r.resourceToWeightMap)
+	return scoreForEachNUMANode(resources, allocatablePerNUMA, r.scoreStrategy, r.resourceToWeightMap)
 }
 
-// scoreHelper will iterate over all NUMA zones of the node and invoke the scoreStrategy func for every zone.
+// scoreForEachNUMANode will iterate over all NUMA zones of the node and invoke the scoreStrategy func for every zone.
 // it will return the minimal score of all the calculated NUMA's score, in order to avoid edge cases.
-func scoreHelper(requested v1.ResourceList, numaList NUMANodeList, score scoreStrategy, resourceToWeightMap resourceToWeightMap ) (int64, *framework.Status) {
+func scoreForEachNUMANode(requested v1.ResourceList, numaList NUMANodeList, score scoreStrategy, resourceToWeightMap resourceToWeightMap ) (int64, *framework.Status) {
 	numaScores := make([]int64, len(numaList))
 	for _, numa := range numaList {
 		numaScores[numa.NUMAID] = score(requested, numa.Resources, resourceToWeightMap)
@@ -145,8 +145,8 @@ func NewResourceAllocationScore(args runtime.Object, handle framework.FrameworkH
 	NewResourceAllocationScorer := &resourceAllocationScorer{
 		scoreStrategy: getScoreStrategy(raArgs.ScoreSchedulingStrategy),
 		data: commonPluginsData{
-			pLister:    lister,
-			namespaces: raArgs.Namespaces,
+			pluginLister: lister,
+			namespaces:   raArgs.Namespaces,
 		},
 		resourceToWeightMap: resToWeightMap,
 	}

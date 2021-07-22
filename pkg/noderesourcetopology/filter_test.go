@@ -281,8 +281,8 @@ func TestNodeResourceTopology(t *testing.T) {
 			topologyv1alpha1.SingleNUMANodeContainerLevel: SingleNUMAContainerLevelHandler,
 		},
 		data: commonPluginsData{
-			namespaces: []string{metav1.NamespaceDefault},
-			pLister:    &lister,
+			namespaces:   []string{metav1.NamespaceDefault},
+			pluginLister: &lister,
 		},
 	}
 

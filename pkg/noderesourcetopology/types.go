@@ -7,8 +7,8 @@ import (
 )
 
 type commonPluginsData struct {
-	pLister    *listerv1alpha1.NodeResourceTopologyLister
-	namespaces []string
+	pluginLister *listerv1alpha1.NodeResourceTopologyLister
+	namespaces   []string
 }
 
 type NUMANode struct {

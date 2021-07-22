@@ -185,8 +185,8 @@ func New(args runtime.Object, handle framework.FrameworkHandle) (framework.Plugi
 			topologyv1alpha1.SingleNUMANodeContainerLevel: SingleNUMAContainerLevelHandler,
 		},
 		data: commonPluginsData{
-			pLister:    lister,
-			namespaces: tcfg.Namespaces,
+			pluginLister: lister,
+			namespaces:   tcfg.Namespaces,
 		},
 	}
 

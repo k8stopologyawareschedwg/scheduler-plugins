@@ -174,8 +174,8 @@ func TestNodeResourceScorePlugin(t *testing.T) {
 			NewResourceAllocationScorer := &resourceAllocationScorer{
 				scoreStrategy: getScoreStrategy(test.strategyName),
 				data: commonPluginsData{
-					pLister:  &lister  ,
-					namespaces: []string{metav1.NamespaceDefault},
+					pluginLister: &lister  ,
+					namespaces:   []string{metav1.NamespaceDefault},
 				},
 			}
 			for _, req := range test.requests {

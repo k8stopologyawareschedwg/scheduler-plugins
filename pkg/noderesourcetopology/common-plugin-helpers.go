@@ -27,9 +27,9 @@ var (
 func findNodeTopology(nodeName string, data *commonPluginsData) *topologyv1alpha1.NodeResourceTopology {
 	klog.V(5).Infof("namespaces: %s", data.namespaces)
 	for _, namespace := range data.namespaces {
-		klog.V(5).Infof("data.lister: %v", data.pLister)
+		klog.V(5).Infof("data.lister: %v", data.pluginLister)
 		// NodeTopology couldn't be placed in several namespaces simultaneously
-		lister := data.pLister
+		lister := data.pluginLister
 		nodeTopology, err := (*lister).NodeResourceTopologies(namespace).Get(nodeName)
 		if err != nil {
 			klog.V(5).Infof("Cannot get NodeTopologies from NodeResourceTopologyNamespaceLister: %v", err)
