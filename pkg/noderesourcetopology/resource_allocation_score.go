@@ -3,6 +3,7 @@ package noderesourcetopology
 import (
 	"context"
 	"fmt"
+	"sigs.k8s.io/scheduler-plugins/pkg/noderesourcetopology/pluginhelpers"
 
 	topologyv1alpha1 "github.com/k8stopologyawareschedwg/noderesourcetopology-api/pkg/apis/topology/v1alpha1"
 	v1 "k8s.io/api/core/v1"
@@ -27,6 +28,7 @@ const (
 	// MostAllocatable strategy favors node with the most amount of available resource
 	MostAllocatable ScoreStrategy = "most-allocatable"
 
+	defaultWeight = int64(1)
 )
 
 // resourceAllocationScorer contains information to calculate resource allocation score.
@@ -55,7 +57,7 @@ func (r *resourceAllocationScorer) ScoreExtensions() framework.ScoreExtensions {
 // score will use `scoreStrategy` function to calculate the score.
 func (r *resourceAllocationScorer) score(pod *v1.Pod, nodeName string) (int64, *framework.Status) {
 	klog.V(5).Infof("Call score for node %v", nodeName)
-	nodeTopology := findNodeTopology(nodeName, &r.NodeResTopoPlugin)
+	nodeTopology := pluginhelpers.FindNodeTopology(nodeName, &r.NodeResTopoPlugin)
 
 	if nodeTopology == nil {
 		return 0, nil
@@ -93,7 +95,7 @@ func calculateResourceAllocatableRequest(pod *v1.Pod, nodeTopology *topologyv1al
 		}
 	}
 
-	allocatable := createNUMANodeList(nodeTopology.Zones)
+	allocatable := pluginhelpers.CreateNUMANodeList(nodeTopology.Zones)
 	return resources, allocatable
 }
 
@@ -132,7 +134,7 @@ func NewResourceAllocationScore(args runtime.Object, handle framework.FrameworkH
 		return nil, fmt.Errorf("want args to be of type NodeResourceTopologyResourceAllocationScoreArgs, got %T", args)
 	}
 
-	lister, err := getNodeTopologyLister(&raArgs.MasterOverride, &raArgs.KubeConfigPath)
+	lister, err := pluginhelpers.GetNodeTopologyLister(&raArgs.MasterOverride, &raArgs.KubeConfigPath)
 	if err != nil {
 		return nil, err
 	}
@@ -152,4 +154,13 @@ func NewResourceAllocationScore(args runtime.Object, handle framework.FrameworkH
 	}
 
 	return NewResourceAllocationScorer, nil
+}
+
+// Weight return the weight of the resource and defaultWeight if weight not specified
+func(rw *resourceToWeightMap) Weight(r v1.ResourceName) int64{
+	w, ok := (*rw)[r]
+	if !ok {
+		return defaultWeight
+	}
+	return w
 }

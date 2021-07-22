@@ -1,8 +1,9 @@
-package noderesourcetopology
+package pluginhelpers
 
 import (
 	"context"
 	"fmt"
+	"sigs.k8s.io/scheduler-plugins/pkg/noderesourcetopology"
 	"sync"
 
 	topologyv1alpha1 "github.com/k8stopologyawareschedwg/noderesourcetopology-api/pkg/apis/topology/v1alpha1"
@@ -23,7 +24,7 @@ var (
 	once                   sync.Once
 )
 
-func findNodeTopology(nodeName string, nodeResTopoPlugin *NodeResTopoPlugin) *topologyv1alpha1.NodeResourceTopology {
+func FindNodeTopology(nodeName string, nodeResTopoPlugin *noderesourcetopology.NodeResTopoPlugin) *topologyv1alpha1.NodeResourceTopology {
 	klog.V(5).Infof("Namespaces: %s", nodeResTopoPlugin.Namespaces)
 	for _, namespace := range nodeResTopoPlugin.Namespaces {
 		klog.V(5).Infof("data.lister: %v", nodeResTopoPlugin.Lister)
@@ -41,7 +42,7 @@ func findNodeTopology(nodeName string, nodeResTopoPlugin *NodeResTopoPlugin) *to
 	return nil
 }
 
-func initNodeTopologyInformer(masterOverride, kubeConfigPath *string) (*listerv1alpha1.NodeResourceTopologyLister, error) {
+func InitNodeTopologyInformer(masterOverride, kubeConfigPath *string) (*listerv1alpha1.NodeResourceTopologyLister, error) {
 	kubeConfig, err := clientcmd.BuildConfigFromFlags(*masterOverride, *kubeConfigPath)
 	if err != nil {
 		klog.Errorf("Cannot create kubeconfig based on: %s, %s, %v", *masterOverride, *kubeConfigPath, err)
@@ -66,34 +67,20 @@ func initNodeTopologyInformer(masterOverride, kubeConfigPath *string) (*listerv1
 	return &nodeResourceTopologyLister, nil
 }
 
-// getNodeTopologyLister will init v1alpha1.NodeResourceTopologyInformer once and return it.
+// GetNodeTopologyLister will init v1alpha1.NodeResourceTopologyInformer once and return it.
 // if v1alpha1.NodeResourceTopologyInformer already initialized, the same instance will be return
-func getNodeTopologyLister(masterOverride, kubeConfigPath *string) (*listerv1alpha1.NodeResourceTopologyLister, error) {
+func GetNodeTopologyLister(masterOverride, kubeConfigPath *string) (*listerv1alpha1.NodeResourceTopologyLister, error) {
 	var err error
 
 	once.Do(func() {
-		topologyListerInstance, err = initNodeTopologyInformer(masterOverride, kubeConfigPath)
+		topologyListerInstance, err = InitNodeTopologyInformer(masterOverride, kubeConfigPath)
 	})
 
 	return topologyListerInstance, err
 }
 
-func extractResources(zone topologyv1alpha1.Zone) v1.ResourceList {
-	res := make(v1.ResourceList)
-	for _, resInfo := range zone.Resources {
-		quantity, err := resource.ParseQuantity(resInfo.Allocatable.String())
-		klog.V(5).Infof("extractResources: resInfo.FilterPluginName %v, resInfo quantity %d", resInfo.Name, quantity.AsDec())
-		if err != nil {
-			klog.Errorf("Failed to parse %s", resInfo.Allocatable.String())
-			continue
-		}
-		res[v1.ResourceName(resInfo.Name)] = quantity
-	}
-	return res
-}
-
-func createNUMANodeList(zones topologyv1alpha1.ZoneList) NUMANodeList {
-	nodes := make(NUMANodeList, 0)
+func CreateNUMANodeList(zones topologyv1alpha1.ZoneList) noderesourcetopology.NUMANodeList {
+	nodes := make(noderesourcetopology.NUMANodeList, 0)
 	for _, zone := range zones {
 		if zone.Type == "Node" {
 			var numaID int
@@ -107,13 +94,13 @@ func createNUMANodeList(zones topologyv1alpha1.ZoneList) NUMANodeList {
 				continue
 			}
 			resources := extractResources(zone)
-			nodes = append(nodes, NUMANode{NUMAID: numaID, Resources: resources})
+			nodes = append(nodes, noderesourcetopology.NUMANode{NUMAID: numaID, Resources: resources})
 		}
 	}
 	return nodes
 }
 
-func makePodByResourceList(resources *v1.ResourceList) *v1.Pod {
+func MakePodByResourceList(resources *v1.ResourceList) *v1.Pod {
 	return &v1.Pod{
 		Spec: v1.PodSpec{
 			Containers: []v1.Container{
@@ -128,7 +115,7 @@ func makePodByResourceList(resources *v1.ResourceList) *v1.Pod {
 	}
 }
 
-func makeResourceListFromZones(zones topologyv1alpha1.ZoneList) v1.ResourceList {
+func MakeResourceListFromZones(zones topologyv1alpha1.ZoneList) v1.ResourceList {
 	result := make(v1.ResourceList)
 	for _, zone := range zones {
 		for _, resInfo := range zone.Resources {
@@ -144,4 +131,18 @@ func makeResourceListFromZones(zones topologyv1alpha1.ZoneList) v1.ResourceList 
 		}
 	}
 	return result
+}
+
+func extractResources(zone topologyv1alpha1.Zone) v1.ResourceList {
+	res := make(v1.ResourceList)
+	for _, resInfo := range zone.Resources {
+		quantity, err := resource.ParseQuantity(resInfo.Allocatable.String())
+		klog.V(5).Infof("extractResources: resInfo.FilterPluginName %v, resInfo quantity %d", resInfo.Name, quantity.AsDec())
+		if err != nil {
+			klog.Errorf("Failed to parse %s", resInfo.Allocatable.String())
+			continue
+		}
+		res[v1.ResourceName(resInfo.Name)] = quantity
+	}
+	return res
 }

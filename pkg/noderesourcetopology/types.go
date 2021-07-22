@@ -20,15 +20,4 @@ type NUMANodeList []NUMANode
 // resourceToWeightMap contains resource name and weight.
 type resourceToWeightMap map[v1.ResourceName]int64
 
-const defaultWeight = int64(1)
-
-// GetWeight return the weight of the resource and defaultWeight if weight not specified
-func(rw *resourceToWeightMap) GetWeight(r v1.ResourceName) int64{
-	w, ok := (*rw)[r]
-	if !ok {
-		return defaultWeight
-	}
-	return w
-}
-
 type scoreStrategy func(v1.ResourceList, v1.ResourceList, resourceToWeightMap) int64

@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/k8stopologyawareschedwg/noderesourcetopology-api/pkg/generated/listers/topology/v1alpha1"
 	"reflect"
+	"sigs.k8s.io/scheduler-plugins/pkg/noderesourcetopology/pluginhelpers"
 	"testing"
 
 	topologyv1alpha1 "github.com/k8stopologyawareschedwg/noderesourcetopology-api/pkg/apis/topology/v1alpha1"
@@ -90,7 +91,7 @@ func TestNodeResourceScorePlugin(t *testing.T) {
 		}
 		// init node objects
 		for _, nrt := range nodeTopologies {
-			res := makeResourceListFromZones(nrt.Zones)
+			res := pluginhelpers.MakeResourceListFromZones(nrt.Zones)
 			nodesMap[nrt.Name] = &v1.Node{
 				ObjectMeta: metav1.ObjectMeta{Name: nrt.Name},
 				Status: v1.NodeStatus{
@@ -116,7 +117,7 @@ func TestNodeResourceScorePlugin(t *testing.T) {
 	}
 	pRequests := []podRequests{
 		{
-			pod: makePodByResourceList(&v1.ResourceList{
+			pod: pluginhelpers.MakePodByResourceList(&v1.ResourceList{
 				v1.ResourceCPU: *resource.NewQuantity(2, resource.DecimalSI),
 				v1.ResourceMemory: *resource.NewQuantity(20 * 1024 * 1024, resource.DecimalSI)}),
 			name:       "Pod1",

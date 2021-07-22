@@ -19,6 +19,7 @@ package noderesourcetopology
 import (
 	"context"
 	"fmt"
+	"sigs.k8s.io/scheduler-plugins/pkg/noderesourcetopology/pluginhelpers"
 	"strings"
 
 	v1 "k8s.io/api/core/v1"
@@ -59,7 +60,7 @@ func SingleNUMAContainerLevelHandler(pod *v1.Pod, zones topologyv1alpha1.ZoneLis
 	klog.V(5).Infof("Single NUMA node handler")
 
 	// prepare NUMANodes list from zoneMap
-	nodes := createNUMANodeList(zones)
+	nodes := pluginhelpers.CreateNUMANodeList(zones)
 	qos := v1qos.GetPodQOS(pod)
 
 	// We count here in the way TopologyManager is doing it, IOW we put InitContainers
@@ -130,7 +131,7 @@ func SingleNUMAPodLevelHandler(pod *v1.Pod, zones topologyv1alpha1.ZoneList) *fr
 		}
 	}
 
-	if resMatchNUMANodes(createNUMANodeList(zones), resources, v1qos.GetPodQOS(pod)) {
+	if resMatchNUMANodes(pluginhelpers.CreateNUMANodeList(zones), resources, v1qos.GetPodQOS(pod)) {
 		// definitely we can't align container, so we can't align a pod
 		return framework.NewStatus(framework.Unschedulable, fmt.Sprintf("Cannot align pod: %s", pod.Name))
 	}
@@ -147,7 +148,7 @@ func (tm *TopologyMatch) Filter(ctx context.Context, cycleState *framework.Cycle
 	}
 
 	nodeName := nodeInfo.Node().Name
-	nodeTopology := findNodeTopology(nodeName, &tm.NodeResTopoPlugin)
+	nodeTopology := pluginhelpers.FindNodeTopology(nodeName, &tm.NodeResTopoPlugin)
 
 	if nodeTopology == nil {
 		return nil
@@ -174,7 +175,7 @@ func New(args runtime.Object, handle framework.FrameworkHandle) (framework.Plugi
 		return nil, fmt.Errorf("want args to be of type NodeResourceTopologyMatchArgs, got %T", args)
 	}
 
-	lister, err := getNodeTopologyLister(&tcfg.MasterOverride, &tcfg.KubeConfigPath)
+	lister, err := pluginhelpers.GetNodeTopologyLister(&tcfg.MasterOverride, &tcfg.KubeConfigPath)
 	if err != nil {
 		return nil, err
 	}

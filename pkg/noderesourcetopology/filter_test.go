@@ -17,6 +17,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"sigs.k8s.io/scheduler-plugins/pkg/noderesourcetopology/pluginhelpers"
 	"testing"
 
 	topologyv1alpha1 "github.com/k8stopologyawareschedwg/noderesourcetopology-api/pkg/apis/topology/v1alpha1"
@@ -165,7 +166,7 @@ func TestNodeResourceTopology(t *testing.T) {
 	nodes := make([]*v1.Node, 4)
 	for i := range nodes {
 		nodeResTopology := nodeTopologies[i]
-		res := makeResourceListFromZones(nodeResTopology.Zones)
+		res := pluginhelpers.MakeResourceListFromZones(nodeResTopology.Zones)
 		nodes[i] = &v1.Node{
 			ObjectMeta: metav1.ObjectMeta{Name: nodeResTopology.Name},
 			Status: v1.NodeStatus{
@@ -190,7 +191,7 @@ func TestNodeResourceTopology(t *testing.T) {
 		},
 		{
 			name: "Guaranteed QoS, pod fit",
-			pod: makePodByResourceList(&v1.ResourceList{
+			pod: pluginhelpers.MakePodByResourceList(&v1.ResourceList{
 				v1.ResourceCPU:    *resource.NewQuantity(2, resource.DecimalSI),
 				v1.ResourceMemory: resource.MustParse("2Gi"),
 				nicResourceName:   *resource.NewQuantity(3, resource.DecimalSI)}),
@@ -199,7 +200,7 @@ func TestNodeResourceTopology(t *testing.T) {
 		},
 		{
 			name: "Burstable QoS, pod fit",
-			pod: makePodByResourceList(&v1.ResourceList{
+			pod: pluginhelpers.MakePodByResourceList(&v1.ResourceList{
 				v1.ResourceCPU:  *resource.NewQuantity(4, resource.DecimalSI),
 				nicResourceName: *resource.NewQuantity(3, resource.DecimalSI)}),
 			node:       nodes[1],
@@ -207,7 +208,7 @@ func TestNodeResourceTopology(t *testing.T) {
 		},
 		{
 			name: "Burstable QoS, pod doesn't fit",
-			pod: makePodByResourceList(&v1.ResourceList{
+			pod: pluginhelpers.MakePodByResourceList(&v1.ResourceList{
 				v1.ResourceCPU:  *resource.NewQuantity(14, resource.DecimalSI),
 				nicResourceName: *resource.NewQuantity(3, resource.DecimalSI)}),
 			node:       nodes[1],
@@ -215,7 +216,7 @@ func TestNodeResourceTopology(t *testing.T) {
 		},
 		{
 			name: "Burstable QoS, pod doesn't fit",
-			pod: makePodByResourceList(&v1.ResourceList{
+			pod: pluginhelpers.MakePodByResourceList(&v1.ResourceList{
 				v1.ResourceCPU:  *resource.NewQuantity(4, resource.DecimalSI),
 				nicResourceName: *resource.NewQuantity(11, resource.DecimalSI)}),
 			node:       nodes[1],
@@ -223,7 +224,7 @@ func TestNodeResourceTopology(t *testing.T) {
 		},
 		{
 			name: "Guaranteed QoS, pod doesn't fit",
-			pod: makePodByResourceList(&v1.ResourceList{
+			pod: pluginhelpers.MakePodByResourceList(&v1.ResourceList{
 				v1.ResourceCPU:    *resource.NewQuantity(9, resource.DecimalSI),
 				v1.ResourceMemory: resource.MustParse("1Gi"),
 				nicResourceName:   *resource.NewQuantity(3, resource.DecimalSI)}),
@@ -232,7 +233,7 @@ func TestNodeResourceTopology(t *testing.T) {
 		},
 		{
 			name: "Guaranteed QoS, pod fit",
-			pod: makePodByResourceList(&v1.ResourceList{
+			pod: pluginhelpers.MakePodByResourceList(&v1.ResourceList{
 				v1.ResourceCPU:             *resource.NewQuantity(2, resource.DecimalSI),
 				v1.ResourceMemory:          resource.MustParse("1Gi"),
 				notExistingNICResourceName: *resource.NewQuantity(0, resource.DecimalSI)}),
