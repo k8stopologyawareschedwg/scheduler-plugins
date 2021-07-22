@@ -47,7 +47,7 @@ type PolicyHandlerMap map[topologyv1alpha1.TopologyManagerPolicy]PolicyHandler
 // TopologyMatch plugin which run simplified version of TopologyManager's admit handler
 type TopologyMatch struct {
 	policyHandlers PolicyHandlerMap
-	data           commonPluginsData
+	NodeResTopoPlugin
 }
 
 // Name FilterPluginName returns name of the plugin. It is used in logs, etc.
@@ -147,7 +147,7 @@ func (tm *TopologyMatch) Filter(ctx context.Context, cycleState *framework.Cycle
 	}
 
 	nodeName := nodeInfo.Node().Name
-	nodeTopology := findNodeTopology(nodeName, &tm.data)
+	nodeTopology := findNodeTopology(nodeName, &tm.NodeResTopoPlugin)
 
 	if nodeTopology == nil {
 		return nil
@@ -184,9 +184,9 @@ func New(args runtime.Object, handle framework.FrameworkHandle) (framework.Plugi
 			topologyv1alpha1.SingleNUMANodePodLevel:       SingleNUMAPodLevelHandler,
 			topologyv1alpha1.SingleNUMANodeContainerLevel: SingleNUMAContainerLevelHandler,
 		},
-		data: commonPluginsData{
-			pluginLister: lister,
-			namespaces:   tcfg.Namespaces,
+		NodeResTopoPlugin: NodeResTopoPlugin{
+			Lister:     lister,
+			Namespaces: tcfg.Namespaces,
 		},
 	}
 

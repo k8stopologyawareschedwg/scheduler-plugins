@@ -3,7 +3,6 @@ package noderesourcetopology
 import (
 	"context"
 	"fmt"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sync"
 
 	topologyv1alpha1 "github.com/k8stopologyawareschedwg/noderesourcetopology-api/pkg/apis/topology/v1alpha1"
@@ -24,12 +23,12 @@ var (
 	once                   sync.Once
 )
 
-func findNodeTopology(nodeName string, data *commonPluginsData) *topologyv1alpha1.NodeResourceTopology {
-	klog.V(5).Infof("namespaces: %s", data.namespaces)
-	for _, namespace := range data.namespaces {
-		klog.V(5).Infof("data.lister: %v", data.pluginLister)
-		// NodeTopology couldn't be placed in several namespaces simultaneously
-		lister := data.pluginLister
+func findNodeTopology(nodeName string, nodeResTopoPlugin *NodeResTopoPlugin) *topologyv1alpha1.NodeResourceTopology {
+	klog.V(5).Infof("Namespaces: %s", nodeResTopoPlugin.Namespaces)
+	for _, namespace := range nodeResTopoPlugin.Namespaces {
+		klog.V(5).Infof("data.lister: %v", nodeResTopoPlugin.Lister)
+		// NodeTopology couldn't be placed in several Namespaces simultaneously
+		lister := nodeResTopoPlugin.Lister
 		nodeTopology, err := (*lister).NodeResourceTopologies(namespace).Get(nodeName)
 		if err != nil {
 			klog.V(5).Infof("Cannot get NodeTopologies from NodeResourceTopologyNamespaceLister: %v", err)
@@ -145,14 +144,4 @@ func makeResourceListFromZones(zones topologyv1alpha1.ZoneList) v1.ResourceList 
 		}
 	}
 	return result
-}
-
-func makeNodeByResourceList(name string, capacity, allocatable *v1.ResourceList) *v1.Node{
-	return &v1.Node{
-		ObjectMeta: metav1.ObjectMeta{Name: name},
-		Status: v1.NodeStatus{
-			Capacity: *capacity   ,
-			Allocatable: *allocatable,
-		},
-	}
 }

@@ -33,7 +33,7 @@ const (
 type resourceAllocationScorer struct {
 	scoreStrategy       scoreStrategy
 	resourceToWeightMap resourceToWeightMap
-	data                commonPluginsData
+	NodeResTopoPlugin
 }
 
 var _ framework.ScorePlugin = &resourceAllocationScorer{}
@@ -55,7 +55,7 @@ func (r *resourceAllocationScorer) ScoreExtensions() framework.ScoreExtensions {
 // score will use `scoreStrategy` function to calculate the score.
 func (r *resourceAllocationScorer) score(pod *v1.Pod, nodeName string) (int64, *framework.Status) {
 	klog.V(5).Infof("Call score for node %v", nodeName)
-	nodeTopology := findNodeTopology(nodeName, &r.data)
+	nodeTopology := findNodeTopology(nodeName, &r.NodeResTopoPlugin)
 
 	if nodeTopology == nil {
 		return 0, nil
@@ -144,9 +144,9 @@ func NewResourceAllocationScore(args runtime.Object, handle framework.FrameworkH
 
 	NewResourceAllocationScorer := &resourceAllocationScorer{
 		scoreStrategy: getScoreStrategy(raArgs.ScoreSchedulingStrategy),
-		data: commonPluginsData{
-			pluginLister: lister,
-			namespaces:   raArgs.Namespaces,
+		NodeResTopoPlugin: NodeResTopoPlugin{
+			Lister:     lister,
+			Namespaces: raArgs.Namespaces,
 		},
 		resourceToWeightMap: resToWeightMap,
 	}

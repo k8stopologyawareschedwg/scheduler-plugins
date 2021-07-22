@@ -173,9 +173,9 @@ func TestNodeResourceScorePlugin(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			NewResourceAllocationScorer := &resourceAllocationScorer{
 				scoreStrategy: getScoreStrategy(test.strategyName),
-				data: commonPluginsData{
-					pluginLister: &lister  ,
-					namespaces:   []string{metav1.NamespaceDefault},
+				NodeResTopoPlugin: NodeResTopoPlugin{
+					Lister:     &lister  ,
+					Namespaces: []string{metav1.NamespaceDefault},
 				},
 			}
 			for _, req := range test.requests {

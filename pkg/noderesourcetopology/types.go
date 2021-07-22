@@ -3,23 +3,16 @@ package noderesourcetopology
 import (
 	listerv1alpha1 "github.com/k8stopologyawareschedwg/noderesourcetopology-api/pkg/generated/listers/topology/v1alpha1"
 	v1 "k8s.io/api/core/v1"
-	framework "k8s.io/kubernetes/pkg/scheduler/framework/v1alpha1"
 )
 
-type commonPluginsData struct {
-	pluginLister *listerv1alpha1.NodeResourceTopologyLister
-	namespaces   []string
+type NodeResTopoPlugin struct {
+	Lister     *listerv1alpha1.NodeResourceTopologyLister
+	Namespaces []string
 }
 
 type NUMANode struct {
 	NUMAID    int
 	Resources v1.ResourceList
-}
-
-type podRequests struct {
-	pod        *v1.Pod
-	name       string
-	wantStatus *framework.Status
 }
 
 type NUMANodeList []NUMANode
