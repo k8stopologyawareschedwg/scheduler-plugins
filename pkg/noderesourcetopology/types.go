@@ -1,8 +1,9 @@
 package noderesourcetopology
 
 import (
-	listerv1alpha1 "github.com/k8stopologyawareschedwg/noderesourcetopology-api/pkg/generated/listers/topology/v1alpha1"
 	v1 "k8s.io/api/core/v1"
+
+	listerv1alpha1 "github.com/k8stopologyawareschedwg/noderesourcetopology-api/pkg/generated/listers/topology/v1alpha1"
 )
 
 type NodeResTopoPlugin struct {

@@ -3,15 +3,16 @@ package score
 import (
 	"context"
 	"fmt"
-	nrt "sigs.k8s.io/scheduler-plugins/pkg/noderesourcetopology"
-	"sigs.k8s.io/scheduler-plugins/pkg/noderesourcetopology/pluginhelpers"
 
-	topologyv1alpha1 "github.com/k8stopologyawareschedwg/noderesourcetopology-api/pkg/apis/topology/v1alpha1"
-	v1 "k8s.io/api/core/v1"
+	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/klog/v2"
 	framework "k8s.io/kubernetes/pkg/scheduler/framework/v1alpha1"
 	apiconfig "sigs.k8s.io/scheduler-plugins/pkg/apis/config"
+	nrt "sigs.k8s.io/scheduler-plugins/pkg/noderesourcetopology"
+	"sigs.k8s.io/scheduler-plugins/pkg/noderesourcetopology/pluginhelpers"
+
+	topologyv1alpha1 "github.com/k8stopologyawareschedwg/noderesourcetopology-api/pkg/apis/topology/v1alpha1"
 )
 
 type StrategyName string

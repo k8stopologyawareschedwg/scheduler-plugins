@@ -20,12 +20,10 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"sigs.k8s.io/scheduler-plugins/pkg/noderesourcetopology/filter"
-	"sigs.k8s.io/scheduler-plugins/pkg/noderesourcetopology/score"
 	"testing"
 	"time"
 
-	v1 "k8s.io/api/core/v1"
+	"k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 
@@ -44,11 +42,13 @@ import (
 	st "k8s.io/kubernetes/pkg/scheduler/testing"
 	testutils "k8s.io/kubernetes/test/integration/util"
 	imageutils "k8s.io/kubernetes/test/utils/image"
+	scheconfig "sigs.k8s.io/scheduler-plugins/pkg/apis/config"
+	"sigs.k8s.io/scheduler-plugins/pkg/noderesourcetopology/filter"
+	"sigs.k8s.io/scheduler-plugins/pkg/noderesourcetopology/score"
+	"sigs.k8s.io/scheduler-plugins/test/util"
 
 	topologyv1alpha1 "github.com/k8stopologyawareschedwg/noderesourcetopology-api/pkg/apis/topology/v1alpha1"
 	topologyclientset "github.com/k8stopologyawareschedwg/noderesourcetopology-api/pkg/generated/clientset/versioned"
-	scheconfig "sigs.k8s.io/scheduler-plugins/pkg/apis/config"
-	"sigs.k8s.io/scheduler-plugins/test/util"
 )
 
 const (

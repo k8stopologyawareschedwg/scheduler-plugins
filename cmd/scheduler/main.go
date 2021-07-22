@@ -19,8 +19,6 @@ package main
 import (
 	"math/rand"
 	"os"
-	"sigs.k8s.io/scheduler-plugins/pkg/noderesourcetopology/filter"
-	"sigs.k8s.io/scheduler-plugins/pkg/noderesourcetopology/score"
 	"time"
 
 	"k8s.io/component-base/logs"
@@ -30,6 +28,8 @@ import (
 	"sigs.k8s.io/scheduler-plugins/pkg/coscheduling"
 	"sigs.k8s.io/scheduler-plugins/pkg/crossnodepreemption"
 	"sigs.k8s.io/scheduler-plugins/pkg/noderesources"
+	"sigs.k8s.io/scheduler-plugins/pkg/noderesourcetopology/filter"
+	"sigs.k8s.io/scheduler-plugins/pkg/noderesourcetopology/score"
 	"sigs.k8s.io/scheduler-plugins/pkg/podstate"
 	"sigs.k8s.io/scheduler-plugins/pkg/qos"
 	"sigs.k8s.io/scheduler-plugins/pkg/trimaran/loadvariationriskbalancing"
