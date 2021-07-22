@@ -1,4 +1,4 @@
-package noderesourcetopology
+package score
 
 import (
 	v1 "k8s.io/api/core/v1"
@@ -14,7 +14,7 @@ func leastAllocatableScoreStrategy(requested, allocatable v1.ResourceList, resou
 		// We don't care what kind of resources are being requested, we just iterate all of them.
 		// If NUMA zone doesn't have the requested resource, the score for that resource will be 0.
 		resourceScore := leastAllocatableScore(requested[resourceName], allocatable[resourceName])
-		weight := resourceToWeightMap.Weight(resourceName)
+		weight := resourceToWeightMap.weight(resourceName)
 		numaNodeScore += resourceScore * weight
 		weightSum += weight
 	}

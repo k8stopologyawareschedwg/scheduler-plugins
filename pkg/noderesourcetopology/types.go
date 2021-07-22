@@ -16,8 +16,3 @@ type NUMANode struct {
 }
 
 type NUMANodeList []NUMANode
-
-// resourceToWeightMap contains resource name and weight.
-type resourceToWeightMap map[v1.ResourceName]int64
-
-type scoreStrategy func(v1.ResourceList, v1.ResourceList, resourceToWeightMap) int64

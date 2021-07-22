@@ -19,6 +19,8 @@ package main
 import (
 	"math/rand"
 	"os"
+	"sigs.k8s.io/scheduler-plugins/pkg/noderesourcetopology/filter"
+	"sigs.k8s.io/scheduler-plugins/pkg/noderesourcetopology/score"
 	"time"
 
 	"k8s.io/component-base/logs"
@@ -28,7 +30,6 @@ import (
 	"sigs.k8s.io/scheduler-plugins/pkg/coscheduling"
 	"sigs.k8s.io/scheduler-plugins/pkg/crossnodepreemption"
 	"sigs.k8s.io/scheduler-plugins/pkg/noderesources"
-	"sigs.k8s.io/scheduler-plugins/pkg/noderesourcetopology"
 	"sigs.k8s.io/scheduler-plugins/pkg/podstate"
 	"sigs.k8s.io/scheduler-plugins/pkg/qos"
 	"sigs.k8s.io/scheduler-plugins/pkg/trimaran/loadvariationriskbalancing"
@@ -49,8 +50,8 @@ func main() {
 		app.WithPlugin(coscheduling.Name, coscheduling.New),
 		app.WithPlugin(loadvariationriskbalancing.Name, loadvariationriskbalancing.New),
 		app.WithPlugin(noderesources.AllocatableName, noderesources.NewAllocatable),
-		app.WithPlugin(noderesourcetopology.FilterPluginName, noderesourcetopology.New),
-		app.WithPlugin(noderesourcetopology.ScorePluginName, noderesourcetopology.NewResourceAllocationScore),
+		app.WithPlugin(filter.Name, filter.New),
+		app.WithPlugin(score.Name, score.New),
 		app.WithPlugin(targetloadpacking.Name, targetloadpacking.New),
 		// Sample plugins below.
 		app.WithPlugin(crossnodepreemption.Name, crossnodepreemption.New),

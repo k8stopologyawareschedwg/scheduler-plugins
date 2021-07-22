@@ -1,9 +1,10 @@
-package noderesourcetopology
+package score
 
 import (
 	"context"
 	"github.com/k8stopologyawareschedwg/noderesourcetopology-api/pkg/generated/listers/topology/v1alpha1"
 	"reflect"
+	"sigs.k8s.io/scheduler-plugins/pkg/noderesourcetopology"
 	"sigs.k8s.io/scheduler-plugins/pkg/noderesourcetopology/pluginhelpers"
 	"testing"
 
@@ -15,6 +16,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	framework "k8s.io/kubernetes/pkg/scheduler/framework/v1alpha1"
 )
+
+const (
+	cpu                        = string(v1.ResourceCPU)
+	memory                     = string(v1.ResourceMemory)
+)
+
 type nodeToScoreMap map[string]int64
 
 func TestNodeResourceScorePlugin(t *testing.T) {
@@ -32,16 +39,16 @@ func TestNodeResourceScorePlugin(t *testing.T) {
 					Name: "node-0",
 					Type: "Node",
 					Resources: topologyv1alpha1.ResourceInfoList{
-						makeTopologyResInfo(cpu, "4", "4"),
-						makeTopologyResInfo(memory, "500Mi", "500Mi"),
+						pluginhelpers.MakeTopologyResInfo(cpu, "4", "4"),
+						pluginhelpers.MakeTopologyResInfo(memory, "500Mi", "500Mi"),
 						},
 					},
 				topologyv1alpha1.Zone{
 					Name: "node-1",
 					Type: "Node",
 					Resources: topologyv1alpha1.ResourceInfoList{
-						makeTopologyResInfo(cpu, "4", "4"),
-						makeTopologyResInfo(memory, "500Mi", "500Mi"),
+						pluginhelpers.MakeTopologyResInfo(cpu, "4", "4"),
+						pluginhelpers.MakeTopologyResInfo(memory, "500Mi", "500Mi"),
 					},
 				},
 			},
@@ -55,15 +62,15 @@ func TestNodeResourceScorePlugin(t *testing.T) {
 					Name: "node-0",
 					Type: "Node",
 					Resources: topologyv1alpha1.ResourceInfoList{
-						makeTopologyResInfo(cpu, "2", "2"),
-						makeTopologyResInfo(memory, "50Mi", "50Mi"),
+						pluginhelpers.MakeTopologyResInfo(cpu, "2", "2"),
+						pluginhelpers.MakeTopologyResInfo(memory, "50Mi", "50Mi"),
 					},
 				}, topologyv1alpha1.Zone{
 					Name: "node-1",
 					Type: "Node",
 					Resources: topologyv1alpha1.ResourceInfoList{
-						makeTopologyResInfo(cpu, "2", "2"),
-						makeTopologyResInfo(memory, "50Mi", "50Mi"),
+						pluginhelpers.MakeTopologyResInfo(cpu, "2", "2"),
+						pluginhelpers.MakeTopologyResInfo(memory, "50Mi", "50Mi"),
 					},
 				},
 			},
@@ -76,15 +83,15 @@ func TestNodeResourceScorePlugin(t *testing.T) {
 					Name: "node-0",
 					Type: "Node",
 					Resources: topologyv1alpha1.ResourceInfoList{
-						makeTopologyResInfo(cpu, "6", "6"),
-						makeTopologyResInfo(memory, "60Mi", "60Mi"),
+						pluginhelpers.MakeTopologyResInfo(cpu, "6", "6"),
+						pluginhelpers.MakeTopologyResInfo(memory, "60Mi", "60Mi"),
 					},
 				}, topologyv1alpha1.Zone{
 					Name: "node-1",
 					Type: "Node",
 					Resources: topologyv1alpha1.ResourceInfoList{
-						makeTopologyResInfo(cpu, "6", "6"),
-						makeTopologyResInfo(memory, "60Mi", "60Mi"),
+						pluginhelpers.MakeTopologyResInfo(cpu, "6", "6"),
+						pluginhelpers.MakeTopologyResInfo(memory, "60Mi", "60Mi"),
 					},
 				},
 			},
@@ -174,7 +181,7 @@ func TestNodeResourceScorePlugin(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			NewResourceAllocationScorer := &resourceAllocationScorer{
 				scoreStrategy: getScoreStrategy(test.strategyName),
-				NodeResTopoPlugin: NodeResTopoPlugin{
+				NodeResTopoPlugin: noderesourcetopology.NodeResTopoPlugin{
 					Lister:     &lister  ,
 					Namespaces: []string{metav1.NamespaceDefault},
 				},

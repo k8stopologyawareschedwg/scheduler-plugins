@@ -3,6 +3,7 @@ package pluginhelpers
 import (
 	"context"
 	"fmt"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/scheduler-plugins/pkg/noderesourcetopology"
 	"sync"
 
@@ -131,6 +132,14 @@ func MakeResourceListFromZones(zones topologyv1alpha1.ZoneList) v1.ResourceList 
 		}
 	}
 	return result
+}
+
+func MakeTopologyResInfo(name, capacity, allocatable string) topologyv1alpha1.ResourceInfo {
+	return topologyv1alpha1.ResourceInfo{
+		Name:        name,
+		Capacity:    intstr.Parse(capacity),
+		Allocatable: intstr.Parse(allocatable),
+	}
 }
 
 func extractResources(zone topologyv1alpha1.Zone) v1.ResourceList {

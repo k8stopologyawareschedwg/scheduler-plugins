@@ -1,11 +1,10 @@
-package noderesourcetopology
+package score
 
 import (
+	"gonum.org/v1/gonum/stat"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	framework "k8s.io/kubernetes/pkg/scheduler/framework/v1alpha1"
-
-	"gonum.org/v1/gonum/stat"
 )
 
 func balancedAllocationScoreStrategy(requested, allocatable v1.ResourceList, resourceToWeightMap resourceToWeightMap) int64 {

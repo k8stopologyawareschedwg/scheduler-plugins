@@ -222,7 +222,7 @@ func TestNodeResourcesAllocatable(t *testing.T) {
 			pod:       cpuAndMemory,
 			nodeInfos: []*framework.NodeInfo{makeNodeInfo("machine", 4000, 10000)},
 			args:      config.NodeResourcesAllocatableArgs{Resources: []schedulerconfig.ResourceSpec{{Name: "memory", Weight: -1}, {Name: "cpu", Weight: 1}}},
-			wantErr:   "resource Weight of memory should be a positive value, got -1",
+			wantErr:   "resource weight of memory should be a positive value, got -1",
 			name:      "resource with negative weight",
 		},
 		{
@@ -230,7 +230,7 @@ func TestNodeResourcesAllocatable(t *testing.T) {
 			pod:       cpuAndMemory,
 			nodeInfos: []*framework.NodeInfo{makeNodeInfo("machine", 4000, 10000)},
 			args:      config.NodeResourcesAllocatableArgs{Resources: []schedulerconfig.ResourceSpec{{Name: "memory", Weight: 1}, {Name: "cpu", Weight: 0}}},
-			wantErr:   "resource Weight of cpu should be a positive value, got 0",
+			wantErr:   "resource weight of cpu should be a positive value, got 0",
 			name:      "resource with zero weight",
 		},
 	}

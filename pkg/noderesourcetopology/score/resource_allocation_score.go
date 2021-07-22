@@ -1,8 +1,9 @@
-package noderesourcetopology
+package score
 
 import (
 	"context"
 	"fmt"
+	nrt "sigs.k8s.io/scheduler-plugins/pkg/noderesourcetopology"
 	"sigs.k8s.io/scheduler-plugins/pkg/noderesourcetopology/pluginhelpers"
 
 	topologyv1alpha1 "github.com/k8stopologyawareschedwg/noderesourcetopology-api/pkg/apis/topology/v1alpha1"
@@ -13,20 +14,34 @@ import (
 	apiconfig "sigs.k8s.io/scheduler-plugins/pkg/apis/config"
 )
 
-type ScoreStrategy string
+type StrategyName string
+
+type scoreStrategy func(v1.ResourceList, v1.ResourceList, resourceToWeightMap) int64
+
+// resourceToWeightMap contains resource name and weight.
+type resourceToWeightMap map[v1.ResourceName]int64
+
+// weight return the weight of the resource and defaultWeight if weight not specified
+func(rw *resourceToWeightMap) weight(r v1.ResourceName) int64{
+	w, ok := (*rw)[r]
+	if !ok {
+		return defaultWeight
+	}
+	return w
+}
 
 const (
-	// ScorePluginName is the name of the plugin used in the plugin registry and configurations.
-	ScorePluginName = "NodeResourceTopologyResourceAllocationScore"
+	// Name is the name of the plugin used in the plugin registry and configurations.
+	Name = "NodeResourceTopologyResourceAllocationScore"
 
 	// LeastAllocatable strategy favors node with the least amount of available resource
-	LeastAllocatable ScoreStrategy = "least-allocatable"
+	LeastAllocatable StrategyName = "least-allocatable"
 
 	// BalancedAllocation strategy favors nodes with balanced resource usage rate
-	BalancedAllocation ScoreStrategy = "balanced-allocation"
+	BalancedAllocation StrategyName = "balanced-allocation"
 
 	// MostAllocatable strategy favors node with the most amount of available resource
-	MostAllocatable ScoreStrategy = "most-allocatable"
+	MostAllocatable StrategyName = "most-allocatable"
 
 	defaultWeight = int64(1)
 )
@@ -35,13 +50,13 @@ const (
 type resourceAllocationScorer struct {
 	scoreStrategy       scoreStrategy
 	resourceToWeightMap resourceToWeightMap
-	NodeResTopoPlugin
+	nrt.NodeResTopoPlugin
 }
 
 var _ framework.ScorePlugin = &resourceAllocationScorer{}
 
 func (r *resourceAllocationScorer) Name() string {
-	return ScorePluginName
+	return Name
 }
 
 func (r *resourceAllocationScorer) Score(ctx context.Context, state *framework.CycleState, pod *v1.Pod, nodeName string) (int64, *framework.Status) {
@@ -71,7 +86,7 @@ func (r *resourceAllocationScorer) score(pod *v1.Pod, nodeName string) (int64, *
 
 // scoreForEachNUMANode will iterate over all NUMA zones of the node and invoke the scoreStrategy func for every zone.
 // it will return the minimal score of all the calculated NUMA's score, in order to avoid edge cases.
-func scoreForEachNUMANode(requested v1.ResourceList, numaList NUMANodeList, score scoreStrategy, resourceToWeightMap resourceToWeightMap ) (int64, *framework.Status) {
+func scoreForEachNUMANode(requested v1.ResourceList, numaList nrt.NUMANodeList, score scoreStrategy, resourceToWeightMap resourceToWeightMap) (int64, *framework.Status) {
 	numaScores := make([]int64, len(numaList))
 	for _, numa := range numaList {
 		numaScores[numa.NUMAID] = score(requested, numa.Resources, resourceToWeightMap)
@@ -82,7 +97,7 @@ func scoreForEachNUMANode(requested v1.ResourceList, numaList NUMANodeList, scor
 	return minScore, nil
 }
 
-func calculateResourceAllocatableRequest(pod *v1.Pod, nodeTopology *topologyv1alpha1.NodeResourceTopology) (v1.ResourceList, NUMANodeList) {
+func calculateResourceAllocatableRequest(pod *v1.Pod, nodeTopology *topologyv1alpha1.NodeResourceTopology) (v1.ResourceList, nrt.NUMANodeList) {
 	containers := append(pod.Spec.InitContainers, pod.Spec.Containers...)
 	resources := make(v1.ResourceList)
 
@@ -112,7 +127,7 @@ func findMinScore(arr []int64) int64 {
 }
 
 func getScoreStrategy(strategy string) scoreStrategy {
-	switch ScoreStrategy(strategy) {
+	switch StrategyName(strategy) {
 	case LeastAllocatable:
 		return leastAllocatableScoreStrategy
 	case MostAllocatable:
@@ -126,9 +141,9 @@ func getScoreStrategy(strategy string) scoreStrategy {
 	}
 }
 
-// NewResourceAllocationScore initializes a new plugin and returns it.
-func NewResourceAllocationScore(args runtime.Object, handle framework.FrameworkHandle) (framework.Plugin, error) {
-	klog.V(5).Infof("creating new NewResourceAllocationScore plugin")
+// New initializes a new plugin and returns it.
+func New(args runtime.Object, handle framework.FrameworkHandle) (framework.Plugin, error) {
+	klog.V(5).Infof("creating new New plugin")
 	raArgs, ok := args.(*apiconfig.NodeResourceTopologyResourceAllocationScoreArgs)
 	if !ok {
 		return nil, fmt.Errorf("want args to be of type NodeResourceTopologyResourceAllocationScoreArgs, got %T", args)
@@ -146,7 +161,7 @@ func NewResourceAllocationScore(args runtime.Object, handle framework.FrameworkH
 
 	NewResourceAllocationScorer := &resourceAllocationScorer{
 		scoreStrategy: getScoreStrategy(raArgs.ScoreSchedulingStrategy),
-		NodeResTopoPlugin: NodeResTopoPlugin{
+		NodeResTopoPlugin: nrt.NodeResTopoPlugin{
 			Lister:     lister,
 			Namespaces: raArgs.Namespaces,
 		},
@@ -154,13 +169,4 @@ func NewResourceAllocationScore(args runtime.Object, handle framework.FrameworkH
 	}
 
 	return NewResourceAllocationScorer, nil
-}
-
-// Weight return the weight of the resource and defaultWeight if weight not specified
-func(rw *resourceToWeightMap) Weight(r v1.ResourceName) int64{
-	w, ok := (*rw)[r]
-	if !ok {
-		return defaultWeight
-	}
-	return w
 }

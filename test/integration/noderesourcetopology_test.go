@@ -20,6 +20,8 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"sigs.k8s.io/scheduler-plugins/pkg/noderesourcetopology/filter"
+	"sigs.k8s.io/scheduler-plugins/pkg/noderesourcetopology/score"
 	"testing"
 	"time"
 
@@ -46,7 +48,6 @@ import (
 	topologyv1alpha1 "github.com/k8stopologyawareschedwg/noderesourcetopology-api/pkg/apis/topology/v1alpha1"
 	topologyclientset "github.com/k8stopologyawareschedwg/noderesourcetopology-api/pkg/generated/clientset/versioned"
 	scheconfig "sigs.k8s.io/scheduler-plugins/pkg/apis/config"
-	"sigs.k8s.io/scheduler-plugins/pkg/noderesourcetopology"
 	"sigs.k8s.io/scheduler-plugins/test/util"
 )
 
@@ -56,9 +57,9 @@ const (
 )
 
 var (
-	leastAllocatableScheduler  = fmt.Sprintf("%v-scheduler", string(noderesourcetopology.LeastAllocatable))
-	balancedAllocationScheduler  = fmt.Sprintf("%v-scheduler", string(noderesourcetopology.BalancedAllocation))
-	mostAllocatableScheduler  = fmt.Sprintf("%v-scheduler", string(noderesourcetopology.MostAllocatable))
+	leastAllocatableScheduler  = fmt.Sprintf("%v-scheduler", string(score.LeastAllocatable))
+	balancedAllocationScheduler  = fmt.Sprintf("%v-scheduler", string(score.BalancedAllocation))
+	mostAllocatableScheduler  = fmt.Sprintf("%v-scheduler", string(score.MostAllocatable))
 )
 
 func TestTopologyMatchPlugin(t *testing.T) {
@@ -70,8 +71,8 @@ func TestTopologyMatchPlugin(t *testing.T) {
 		CloseFn:  func() {},
 	}
 	registry := fwkruntime.Registry{
-		noderesourcetopology.FilterPluginName: noderesourcetopology.New,
-		noderesourcetopology.ScorePluginName: noderesourcetopology.NewResourceAllocationScore,
+		filter.Name: filter.New,
+		score.Name:  score.New,
 	}
 	t.Log("create apiserver")
 	_, config := util.StartApi(t, todo.Done())
@@ -145,13 +146,13 @@ func TestTopologyMatchPlugin(t *testing.T) {
 			Plugins: &schedapi.Plugins{
 				Filter: &schedapi.PluginSet{
 					Enabled: []schedapi.Plugin{
-						{Name: noderesourcetopology.FilterPluginName},
+						{Name: filter.Name},
 					},
 				},
 			},
 			PluginConfig: []schedapi.PluginConfig{
 				{
-					Name: noderesourcetopology.FilterPluginName,
+					Name: filter.Name,
 					Args: filterArgs,
 				},
 			},
@@ -159,17 +160,17 @@ func TestTopologyMatchPlugin(t *testing.T) {
 		makeProfileByPluginArgs(
 			leastAllocatableScheduler,
 			filterArgs,
-			makeResourceAllocationScoreArgs(kubeConfigPath, ns.Name, noderesourcetopology.LeastAllocatable),
+			makeResourceAllocationScoreArgs(kubeConfigPath, ns.Name, score.LeastAllocatable),
 		),
 		makeProfileByPluginArgs(
 		balancedAllocationScheduler,
 		filterArgs,
-		makeResourceAllocationScoreArgs(kubeConfigPath, ns.Name, noderesourcetopology.BalancedAllocation),
+		makeResourceAllocationScoreArgs(kubeConfigPath, ns.Name, score.BalancedAllocation),
 	   ),
 		makeProfileByPluginArgs(
 			mostAllocatableScheduler,
 			filterArgs,
-			makeResourceAllocationScoreArgs(kubeConfigPath, ns.Name, noderesourcetopology.MostAllocatable),
+			makeResourceAllocationScoreArgs(kubeConfigPath, ns.Name, score.MostAllocatable),
 		),
 	}
 
@@ -788,29 +789,29 @@ func makeProfileByPluginArgs(
 		Plugins: &schedapi.Plugins{
 			Filter: &schedapi.PluginSet{
 				Enabled: []schedapi.Plugin{
-					{Name: noderesourcetopology.FilterPluginName},
+					{Name: filter.Name},
 				},
 			},
 			Score: &schedapi.PluginSet{
 				Enabled: []schedapi.Plugin{
-					{Name: noderesourcetopology.ScorePluginName},
+					{Name: score.Name},
 				},
 			},
 		},
 		PluginConfig: []schedapi.PluginConfig{
 			{
-				Name: noderesourcetopology.FilterPluginName,
+				Name: filter.Name,
 				Args: filterArgs,
 			},
 			{
-				Name: noderesourcetopology.ScorePluginName,
+				Name: score.Name,
 				Args: scoreArgs,
 			},
 		},
 	}
 }
 
-func makeResourceAllocationScoreArgs(kubeConfigPath, ns string, strategy noderesourcetopology.ScoreStrategy) *scheconfig.NodeResourceTopologyResourceAllocationScoreArgs {
+func makeResourceAllocationScoreArgs(kubeConfigPath, ns string, strategy score.StrategyName) *scheconfig.NodeResourceTopologyResourceAllocationScoreArgs {
 	return &scheconfig.NodeResourceTopologyResourceAllocationScoreArgs{
 		KubeConfigPath: kubeConfigPath,
 		Namespaces:     []string{ns},

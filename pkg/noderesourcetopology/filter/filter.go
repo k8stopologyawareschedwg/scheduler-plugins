@@ -14,11 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package noderesourcetopology
+package filter
 
 import (
 	"context"
 	"fmt"
+	"sigs.k8s.io/scheduler-plugins/pkg/noderesourcetopology"
 	"sigs.k8s.io/scheduler-plugins/pkg/noderesourcetopology/pluginhelpers"
 	"strings"
 
@@ -35,8 +36,8 @@ import (
 )
 
 const (
-	// FilterPluginName is the name of the plugin used in the plugin registry and configurations.
-	FilterPluginName = "NodeResourceTopologyMatch"
+	// Name is the name of the plugin used in the plugin registry and configurations.
+	Name = "NodeResourceTopologyMatch"
 )
 
 var _ framework.FilterPlugin = &TopologyMatch{}
@@ -48,12 +49,12 @@ type PolicyHandlerMap map[topologyv1alpha1.TopologyManagerPolicy]PolicyHandler
 // TopologyMatch plugin which run simplified version of TopologyManager's admit handler
 type TopologyMatch struct {
 	policyHandlers PolicyHandlerMap
-	NodeResTopoPlugin
+	noderesourcetopology.NodeResTopoPlugin
 }
 
-// Name FilterPluginName returns name of the plugin. It is used in logs, etc.
+// Name Name returns name of the plugin. It is used in logs, etc.
 func (tm *TopologyMatch) Name() string {
-	return FilterPluginName
+	return Name
 }
 
 func SingleNUMAContainerLevelHandler(pod *v1.Pod, zones topologyv1alpha1.ZoneList) *framework.Status {
@@ -76,7 +77,7 @@ func SingleNUMAContainerLevelHandler(pod *v1.Pod, zones topologyv1alpha1.ZoneLis
 
 // resMatchNUMANodes checks for sufficient resource, this function
 // requires NUMANodeList with properly populated NUMANode, NUMAID should be in range 0-63
-func resMatchNUMANodes(nodes NUMANodeList, resources v1.ResourceList, qos v1.PodQOSClass) bool {
+func resMatchNUMANodes(nodes noderesourcetopology.NUMANodeList, resources v1.ResourceList, qos v1.PodQOSClass) bool {
 	bitmask := bm.NewEmptyBitMask()
 	// set all bits, each bit is a NUMA node, if resources couldn't be aligned
 	// on the NUMA node, bit should be unset
@@ -185,7 +186,7 @@ func New(args runtime.Object, handle framework.FrameworkHandle) (framework.Plugi
 			topologyv1alpha1.SingleNUMANodePodLevel:       SingleNUMAPodLevelHandler,
 			topologyv1alpha1.SingleNUMANodeContainerLevel: SingleNUMAContainerLevelHandler,
 		},
-		NodeResTopoPlugin: NodeResTopoPlugin{
+		NodeResTopoPlugin: noderesourcetopology.NodeResTopoPlugin{
 			Lister:     lister,
 			Namespaces: tcfg.Namespaces,
 		},

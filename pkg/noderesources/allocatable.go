@@ -50,7 +50,7 @@ func (alloc *Allocatable) Name() string {
 func validateResources(resources []schedulerconfig.ResourceSpec) error {
 	for _, resource := range resources {
 		if resource.Weight <= 0 {
-			return fmt.Errorf("resource Weight of %v should be a positive value, got %v", resource.Name, resource.Weight)
+			return fmt.Errorf("resource weight of %v should be a positive value, got %v", resource.Name, resource.Weight)
 		}
 		// No upper bound on weight.
 	}

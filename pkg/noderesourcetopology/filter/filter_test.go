@@ -11,12 +11,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package noderesourcetopology
+package filter
 
 import (
 	"context"
 	"fmt"
 	"reflect"
+	"sigs.k8s.io/scheduler-plugins/pkg/noderesourcetopology"
 	"sigs.k8s.io/scheduler-plugins/pkg/noderesourcetopology/pluginhelpers"
 	"testing"
 
@@ -26,7 +27,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	framework "k8s.io/kubernetes/pkg/scheduler/framework/v1alpha1"
 )
 
@@ -56,14 +56,6 @@ func makePodByResourceListWithManyContainers(resources *v1.ResourceList, contain
 	}
 }
 
-func makeTopologyResInfo(name, capacity, allocatable string) topologyv1alpha1.ResourceInfo {
-	return topologyv1alpha1.ResourceInfo{
-		Name:        name,
-		Capacity:    intstr.Parse(capacity),
-		Allocatable: intstr.Parse(allocatable),
-	}
-}
-
 func TestNodeResourceTopology(t *testing.T) {
 	nodeTopologies := make([]*topologyv1alpha1.NodeResourceTopology, 4)
 	nodeTopologies[0] = &topologyv1alpha1.NodeResourceTopology{
@@ -74,18 +66,18 @@ func TestNodeResourceTopology(t *testing.T) {
 				Name: "node-0",
 				Type: "Node",
 				Resources: topologyv1alpha1.ResourceInfoList{
-					makeTopologyResInfo(cpu, "20", "4"),
-					makeTopologyResInfo(memory, "8Gi", "8Gi"),
-					makeTopologyResInfo(nicResourceName, "30", "10"),
+					pluginhelpers.MakeTopologyResInfo(cpu, "20", "4"),
+					pluginhelpers.MakeTopologyResInfo(memory, "8Gi", "8Gi"),
+					pluginhelpers.MakeTopologyResInfo(nicResourceName, "30", "10"),
 				},
 			},
 			{
 				Name: "node-1",
 				Type: "Node",
 				Resources: topologyv1alpha1.ResourceInfoList{
-					makeTopologyResInfo(cpu, "30", "8"),
-					makeTopologyResInfo(memory, "8Gi", "8Gi"),
-					makeTopologyResInfo(nicResourceName, "30", "10"),
+					pluginhelpers.MakeTopologyResInfo(cpu, "30", "8"),
+					pluginhelpers.MakeTopologyResInfo(memory, "8Gi", "8Gi"),
+					pluginhelpers.MakeTopologyResInfo(nicResourceName, "30", "10"),
 				},
 			},
 		},
@@ -98,18 +90,18 @@ func TestNodeResourceTopology(t *testing.T) {
 				Name: "node-0",
 				Type: "Node",
 				Resources: topologyv1alpha1.ResourceInfoList{
-					makeTopologyResInfo(cpu, "20", "2"),
-					makeTopologyResInfo(memory, "8Gi", "4Gi"),
-					makeTopologyResInfo(nicResourceName, "30", "5"),
+					pluginhelpers.MakeTopologyResInfo(cpu, "20", "2"),
+					pluginhelpers.MakeTopologyResInfo(memory, "8Gi", "4Gi"),
+					pluginhelpers.MakeTopologyResInfo(nicResourceName, "30", "5"),
 				},
 			},
 			{
 				Name: "node-1",
 				Type: "Node",
 				Resources: topologyv1alpha1.ResourceInfoList{
-					makeTopologyResInfo(cpu, "30", "4"),
-					makeTopologyResInfo(memory, "8Gi", "4Gi"),
-					makeTopologyResInfo(nicResourceName, "30", "2"),
+					pluginhelpers.MakeTopologyResInfo(cpu, "30", "4"),
+					pluginhelpers.MakeTopologyResInfo(memory, "8Gi", "4Gi"),
+					pluginhelpers.MakeTopologyResInfo(nicResourceName, "30", "2"),
 				},
 			},
 		},
@@ -122,18 +114,18 @@ func TestNodeResourceTopology(t *testing.T) {
 				Name: "node-0",
 				Type: "Node",
 				Resources: topologyv1alpha1.ResourceInfoList{
-					makeTopologyResInfo(cpu, "20", "2"),
-					makeTopologyResInfo(memory, "8Gi", "4Gi"),
-					makeTopologyResInfo(nicResourceName, "30", "5"),
+					pluginhelpers.MakeTopologyResInfo(cpu, "20", "2"),
+					pluginhelpers.MakeTopologyResInfo(memory, "8Gi", "4Gi"),
+					pluginhelpers.MakeTopologyResInfo(nicResourceName, "30", "5"),
 				},
 			},
 			{
 				Name: "node-1",
 				Type: "Node",
 				Resources: topologyv1alpha1.ResourceInfoList{
-					makeTopologyResInfo(cpu, "30", "4"),
-					makeTopologyResInfo(memory, "8Gi", "4Gi"),
-					makeTopologyResInfo(nicResourceName, "30", "2"),
+					pluginhelpers.MakeTopologyResInfo(cpu, "30", "4"),
+					pluginhelpers.MakeTopologyResInfo(memory, "8Gi", "4Gi"),
+					pluginhelpers.MakeTopologyResInfo(nicResourceName, "30", "2"),
 				},
 			},
 		},
@@ -146,18 +138,18 @@ func TestNodeResourceTopology(t *testing.T) {
 				Name: "node-0",
 				Type: "Node",
 				Resources: topologyv1alpha1.ResourceInfoList{
-					makeTopologyResInfo(cpu, "20", "2"),
-					makeTopologyResInfo(memory, "8Gi", "4Gi"),
-					makeTopologyResInfo(nicResourceName, "30", "5"),
+					pluginhelpers.MakeTopologyResInfo(cpu, "20", "2"),
+					pluginhelpers.MakeTopologyResInfo(memory, "8Gi", "4Gi"),
+					pluginhelpers.MakeTopologyResInfo(nicResourceName, "30", "5"),
 				},
 			},
 			{
 				Name: "node-75",
 				Type: "Node",
 				Resources: topologyv1alpha1.ResourceInfoList{
-					makeTopologyResInfo(cpu, "30", "4"),
-					makeTopologyResInfo(memory, "8Gi", "4Gi"),
-					makeTopologyResInfo(nicResourceName, "30", "2"),
+					pluginhelpers.MakeTopologyResInfo(cpu, "30", "4"),
+					pluginhelpers.MakeTopologyResInfo(memory, "8Gi", "4Gi"),
+					pluginhelpers.MakeTopologyResInfo(nicResourceName, "30", "2"),
 				},
 			},
 		},
@@ -281,7 +273,7 @@ func TestNodeResourceTopology(t *testing.T) {
 			topologyv1alpha1.SingleNUMANodePodLevel:       SingleNUMAPodLevelHandler,
 			topologyv1alpha1.SingleNUMANodeContainerLevel: SingleNUMAContainerLevelHandler,
 		},
-		NodeResTopoPlugin: NodeResTopoPlugin{
+		NodeResTopoPlugin: noderesourcetopology.NodeResTopoPlugin{
 			Namespaces: []string{metav1.NamespaceDefault},
 			Lister:     &lister,
 		},
