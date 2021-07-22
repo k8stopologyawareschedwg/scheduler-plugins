@@ -28,4 +28,5 @@ profiles:
       kubeconfigpath: "/etc/kubernetes/scheduler.conf"
       namespaces:
       - "test-namespace"
+      # other strategies are most-allocatable and balanced-allocation
       scoreschedulingstrategy: "least-allocatable"
