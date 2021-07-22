@@ -19,8 +19,8 @@ import (
 )
 
 const (
-	cpu                        = string(v1.ResourceCPU)
-	memory                     = string(v1.ResourceMemory)
+	cpu    = string(v1.ResourceCPU)
+	memory = string(v1.ResourceMemory)
 )
 
 type nodeToScoreMap map[string]int64
@@ -42,8 +42,8 @@ func TestNodeResourceScorePlugin(t *testing.T) {
 					Resources: topologyv1alpha1.ResourceInfoList{
 						pluginhelpers.MakeTopologyResInfo(cpu, "4", "4"),
 						pluginhelpers.MakeTopologyResInfo(memory, "500Mi", "500Mi"),
-						},
 					},
+				},
 				topologyv1alpha1.Zone{
 					Name: "node-1",
 					Type: "Node",
@@ -126,8 +126,8 @@ func TestNodeResourceScorePlugin(t *testing.T) {
 	pRequests := []podRequests{
 		{
 			pod: pluginhelpers.MakePodByResourceList(&v1.ResourceList{
-				v1.ResourceCPU: *resource.NewQuantity(2, resource.DecimalSI),
-				v1.ResourceMemory: *resource.NewQuantity(20 * 1024 * 1024, resource.DecimalSI)}),
+				v1.ResourceCPU:    *resource.NewQuantity(2, resource.DecimalSI),
+				v1.ResourceMemory: *resource.NewQuantity(20*1024*1024, resource.DecimalSI)}),
 			name:       "Pod1",
 			wantStatus: nil,
 		},
@@ -135,11 +135,11 @@ func TestNodeResourceScorePlugin(t *testing.T) {
 
 	// Each testScenario will describe a set pod requests arrived sequentially to the scoring plugin.
 	type testScenario struct {
-	name         string
-	wantedRes    nodeToScoreMap
-	requests     []podRequests
-	strategyName string
-}
+		name         string
+		wantedRes    nodeToScoreMap
+		requests     []podRequests
+		strategyName string
+	}
 
 	tests := []testScenario{
 		{
@@ -183,7 +183,7 @@ func TestNodeResourceScorePlugin(t *testing.T) {
 			NewResourceAllocationScorer := &resourceAllocationScorer{
 				scoreStrategy: getScoreStrategy(test.strategyName),
 				NodeResTopoPlugin: noderesourcetopology.NodeResTopoPlugin{
-					Lister:     &lister  ,
+					Lister:     &lister,
 					Namespaces: []string{metav1.NamespaceDefault},
 				},
 			}
@@ -209,7 +209,7 @@ func TestNodeResourceScorePlugin(t *testing.T) {
 					nodeToScore[node.ObjectMeta.Name] = score
 				}
 				gotNode := findMaxScoreNode(nodeToScore)
-				gotScore:= nodeToScore[gotNode]
+				gotScore := nodeToScore[gotNode]
 				t.Logf("%q: got node %q with score %d\n", test.name, gotNode, gotScore)
 				for wantNode, wantScore := range test.wantedRes {
 					if wantNode != gotNode {

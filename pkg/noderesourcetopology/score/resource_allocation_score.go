@@ -23,7 +23,7 @@ type scoreStrategy func(v1.ResourceList, v1.ResourceList, resourceToWeightMap) i
 type resourceToWeightMap map[v1.ResourceName]int64
 
 // weight return the weight of the resource and defaultWeight if weight not specified
-func(rw *resourceToWeightMap) weight(r v1.ResourceName) int64{
+func (rw *resourceToWeightMap) weight(r v1.ResourceName) int64 {
 	w, ok := (*rw)[r]
 	if !ok {
 		return defaultWeight
