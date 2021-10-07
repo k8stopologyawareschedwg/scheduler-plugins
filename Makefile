@@ -126,6 +126,10 @@ integration-test: install-etcd autogen
 verify-gofmt:
 	hack/verify-gofmt.sh
 
+.PHONY: verify-crdgen
+verify-crdgen: autogen
+	hack/verify-crdgen.sh
+
 .PHONY: clean
 clean:
 	rm -rf ./bin
