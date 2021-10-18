@@ -1,0 +1,87 @@
+name: CI release flow
+
+on:
+  push:
+    # Sequence of patterns matched against refs/tags
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  release-build:
+    runs-on: ubuntu-20.04
+    steps:
+      - name: checkout sources
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: setup golang
+        uses: actions/setup-go@v2
+        id: go
+        with:
+          go-version: 1.16
+
+      - name: verify modules
+        run: go mod verify
+
+      - name: set release version env var
+        run: |
+            echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
+
+      - name: unit-test
+        run: |
+          make unit-test
+
+      - name: integration-test
+        run: |
+          ./hack/install-etcd.sh
+          export PATH=$PATH:$(pwd)/etcd
+          make integration-test
+
+      - name: build controller image
+        id: build-controller-image
+        uses: redhat-actions/buildah-build@v2
+        with:
+          image: scheduler-plugins-controller
+          tags: ${{ env.RELEASE_VERSION}}
+          dockerfiles: |
+            ./build/controller/Dockerfile
+
+      - name: push controller to quay
+        id: push-controller-to-quay
+        uses: redhat-actions/push-to-registry@v2
+        with:
+          image: ${{ steps.build-controller-image.outputs.image }}
+          tags: ${{ steps.build-controller-image.outputs.tags }}
+          registry: quay.io/k8stopologyawareschedwg
+          username: ${{ secrets.QUAY_IO_USERNAME }}
+          password: ${{ secrets.QUAY_IO_ROBOTOKEN }}
+
+      - name: build scheduler image
+        id: build-scheduler-image
+        uses: redhat-actions/buildah-build@v2
+        with:
+          image: scheduler-plugins-kube-scheduler
+          tags: ${{ env.RELEASE_VERSION}}
+          dockerfiles: |
+            ./build/scheduler/Dockerfile
+
+      - name: push scheduler to quay
+        id: push-scheduler-to-quay
+        uses: redhat-actions/push-to-registry@v2
+        with:
+          image: ${{ steps.build-scheduler-image.outputs.image }}
+          tags: ${{ steps.build-scheduler-image.outputs.tags }}
+          registry: ${{ steps.push-controller-to-quay.outputs.registry }}
+          username: ${{ secrets.QUAY_IO_USERNAME }}
+          password: ${{ secrets.QUAY_IO_ROBOTOKEN }}
+
+      - name: print images url
+        run: echo "Images pushed to ${{ steps.push-controller-to-quay.registry-paths }} and to ${{ steps.push-scheduler-to-quay.registry-paths }}"
