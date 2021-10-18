@@ -86,7 +86,7 @@ jobs:
         with:
           image: ${{ steps.build-scheduler-image.outputs.image }}
           tags: ${{ steps.build-scheduler-image.outputs.tags }}
-          registry: ${{ steps.push-controller-to-quay.outputs.registry }}
+          registry: quay.io/k8stopologyawareschedwg
           username: ${{ secrets.QUAY_IO_USERNAME }}
           password: ${{ secrets.QUAY_IO_ROBOTOKEN }}
 
