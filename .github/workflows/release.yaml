@@ -53,8 +53,10 @@ jobs:
           image: scheduler-plugins-controller
           arch: amd64
           tags: ${{ env.RELEASE_VERSION}}
+          build-args: |
+            ARCH=amd64
           dockerfiles: |
-            ./build/controller/Dockerfile
+            ./build/controller/Dockerfile.k8staswg
 
       - name: push controller to quay
         id: push-controller-to-quay
@@ -73,8 +75,10 @@ jobs:
           image: scheduler-plugins-kube-scheduler
           arch: amd64
           tags: ${{ env.RELEASE_VERSION}}
+          build-args: |
+            ARCH=amd64
           dockerfiles: |
-            ./build/scheduler/Dockerfile
+            ./build/scheduler/Dockerfile.k8staswg
 
       - name: push scheduler to quay
         id: push-scheduler-to-quay
