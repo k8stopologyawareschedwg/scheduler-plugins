@@ -51,6 +51,7 @@ jobs:
         uses: redhat-actions/buildah-build@v2
         with:
           image: scheduler-plugins-controller
+          arch: amd64
           tags: ${{ env.RELEASE_VERSION}}
           dockerfiles: |
             ./build/controller/Dockerfile
@@ -70,6 +71,7 @@ jobs:
         uses: redhat-actions/buildah-build@v2
         with:
           image: scheduler-plugins-kube-scheduler
+          arch: amd64
           tags: ${{ env.RELEASE_VERSION}}
           dockerfiles: |
             ./build/scheduler/Dockerfile
