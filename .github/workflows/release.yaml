@@ -31,9 +31,10 @@ jobs:
       - name: verify modules
         run: go mod verify
 
-      - name: set release version env var
+      - name: set extra environment variables
         run: |
             echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
+            echo "GOPATH=$(pwd)/.." >> $GITHUB_ENV
 
       - name: unit-test
         run: |
