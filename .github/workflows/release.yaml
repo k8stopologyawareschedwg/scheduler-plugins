@@ -33,7 +33,8 @@ jobs:
 
       - name: set extra environment variables
         run: |
-            echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
+            echo "TAG_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
+            echo "RELEASE_VERSION=devel-${TAG_VERSION}" >> $GITHUB_ENV
             echo "GOPATH=$(pwd)/.." >> $GITHUB_ENV
 
       - name: unit-test
@@ -52,7 +53,7 @@ jobs:
         with:
           image: scheduler-plugins-controller
           arch: amd64
-          tags: ${{ env.RELEASE_VERSION}}
+          tags: ${{ env.TAG_VERSION}}
           build-args: |
             ARCH=amd64
           dockerfiles: |
@@ -74,7 +75,7 @@ jobs:
         with:
           image: scheduler-plugins-kube-scheduler
           arch: amd64
-          tags: ${{ env.RELEASE_VERSION}}
+          tags: ${{ env.TAG_VERSION}}
           build-args: |
             ARCH=amd64
           dockerfiles: |
