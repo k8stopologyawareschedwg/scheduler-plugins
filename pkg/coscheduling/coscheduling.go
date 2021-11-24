@@ -29,7 +29,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/tools/clientcmd"
 	corev1helpers "k8s.io/component-helpers/scheduling/corev1"
 	"k8s.io/klog/v2"
 	"k8s.io/kubernetes/pkg/scheduler/framework"
@@ -68,11 +67,7 @@ func New(obj runtime.Object, handle framework.Handle) (framework.Plugin, error) 
 		return nil, fmt.Errorf("want args to be of type CoschedulingArgs, got %T", obj)
 	}
 
-	conf, err := clientcmd.BuildConfigFromFlags(args.KubeMaster, args.KubeConfigPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to init rest.Config: %v", err)
-	}
-	pgClient := pgclientset.NewForConfigOrDie(conf)
+	pgClient := pgclientset.NewForConfigOrDie(handle.KubeConfig())
 	pgInformerFactory := pgformers.NewSharedInformerFactory(pgClient, 0)
 	pgInformer := pgInformerFactory.Scheduling().V1alpha1().PodGroups()
 
@@ -205,41 +200,35 @@ func (cs *Coscheduling) PreFilterExtensions() framework.PreFilterExtensions {
 
 // Permit is the functions invoked by the framework at "Permit" extension point.
 func (cs *Coscheduling) Permit(ctx context.Context, state *framework.CycleState, pod *v1.Pod, nodeName string) (*framework.Status, time.Duration) {
-	fullName := util.GetPodGroupFullName(pod)
-	if len(fullName) == 0 {
-		return framework.NewStatus(framework.Success, ""), 0
-	}
 	waitTime := *cs.scheduleTimeout
-	ready, err := cs.pgMgr.Permit(ctx, pod, nodeName)
-	if err != nil {
+	s := cs.pgMgr.Permit(ctx, pod)
+	var retStatus *framework.Status
+	switch s {
+	case core.PodGroupNotSpecified:
+		return framework.NewStatus(framework.Success, ""), 0
+	case core.PodGroupNotFound:
+		return framework.NewStatus(framework.Unschedulable, "PodGroup not found"), 0
+	case core.Wait:
+		klog.InfoS("Pod is waiting to be scheduled to node", "pod", klog.KObj(pod), "nodeName", nodeName)
 		_, pg := cs.pgMgr.GetPodGroup(pod)
-		if pg == nil {
-			return framework.NewStatus(framework.Unschedulable, "PodGroup not found"), 0
-		}
 		if wait := util.GetWaitTimeDuration(pg, cs.scheduleTimeout); wait != 0 {
 			waitTime = wait
 		}
-		if err == util.ErrorWaiting {
-			klog.InfoS("Pod is waiting to be scheduled to node", "pod", klog.KObj(pod), "node", nodeName)
-			return framework.NewStatus(framework.Wait, ""), waitTime
-		}
-		klog.ErrorS(err, "Permit error")
-		return framework.NewStatus(framework.Unschedulable, err.Error()), 0
+		retStatus = framework.NewStatus(framework.Wait)
+	case core.Success:
+		pgFullName := util.GetPodGroupFullName(pod)
+		cs.frameworkHandler.IterateOverWaitingPods(func(waitingPod framework.WaitingPod) {
+			if util.GetPodGroupFullName(waitingPod.GetPod()) == pgFullName {
+				klog.V(3).InfoS("Permit allows", "pod", klog.KObj(waitingPod.GetPod()))
+				waitingPod.Allow(cs.Name())
+			}
+		})
+		klog.V(3).InfoS("Permit allows", "pod", klog.KObj(pod))
+		retStatus = framework.NewStatus(framework.Success)
+		waitTime = 0
 	}
 
-	klog.V(5).InfoS("Pod requires pgName", "pod", klog.KObj(pod), "podGroup", fullName)
-	if !ready {
-		return framework.NewStatus(framework.Wait, ""), waitTime
-	}
-
-	cs.frameworkHandler.IterateOverWaitingPods(func(waitingPod framework.WaitingPod) {
-		if util.GetPodGroupFullName(waitingPod.GetPod()) == fullName {
-			klog.V(3).InfoS("Permit allows", "pod", klog.KObj(waitingPod.GetPod()))
-			waitingPod.Allow(cs.Name())
-		}
-	})
-	klog.V(3).InfoS("Permit allows", "pod", klog.KObj(pod))
-	return framework.NewStatus(framework.Success, ""), 0
+	return retStatus, waitTime
 }
 
 // Reserve is the functions invoked by the framework at "reserve" extension point.
@@ -282,8 +271,7 @@ func (cs *Coscheduling) getStateKey() framework.StateKey {
 	return framework.StateKey(fmt.Sprintf("Prefilter-%v", cs.Name()))
 }
 
-type noopStateData struct {
-}
+type noopStateData struct{}
 
 func NewNoopStateData() framework.StateData {
 	return &noopStateData{}

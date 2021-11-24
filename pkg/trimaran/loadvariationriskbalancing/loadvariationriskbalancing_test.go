@@ -19,7 +19,6 @@ package loadvariationriskbalancing
 import (
 	"context"
 	"encoding/json"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -40,7 +39,7 @@ import (
 	st "k8s.io/kubernetes/pkg/scheduler/testing"
 
 	pluginConfig "sigs.k8s.io/scheduler-plugins/pkg/apis/config"
-	"sigs.k8s.io/scheduler-plugins/pkg/apis/config/v1beta1"
+	"sigs.k8s.io/scheduler-plugins/pkg/apis/config/v1beta2"
 	testutil "sigs.k8s.io/scheduler-plugins/test/util"
 )
 
@@ -83,8 +82,8 @@ func TestNew(t *testing.T) {
 
 	loadVariationRiskBalancingArgs := pluginConfig.LoadVariationRiskBalancingArgs{
 		WatcherAddress:          server.URL,
-		SafeVarianceMargin:      v1beta1.DefaultSafeVarianceMargin,
-		SafeVarianceSensitivity: v1beta1.DefaultSafeVarianceSensitivity,
+		SafeVarianceMargin:      v1beta2.DefaultSafeVarianceMargin,
+		SafeVarianceSensitivity: v1beta2.DefaultSafeVarianceSensitivity,
 	}
 	loadVariationRiskBalancingConfig := config.PluginConfig{
 		Name: Name,
@@ -336,8 +335,8 @@ func TestScore(t *testing.T) {
 
 			loadVariationRiskBalancingArgs := pluginConfig.LoadVariationRiskBalancingArgs{
 				WatcherAddress:          server.URL,
-				SafeVarianceMargin:      v1beta1.DefaultSafeVarianceMargin,
-				SafeVarianceSensitivity: v1beta1.DefaultSafeVarianceSensitivity,
+				SafeVarianceMargin:      v1beta2.DefaultSafeVarianceMargin,
+				SafeVarianceSensitivity: v1beta2.DefaultSafeVarianceSensitivity,
 			}
 			loadVariationRiskBalancingConfig := config.PluginConfig{
 				Name: Name,
@@ -381,10 +380,7 @@ func newTestSharedLister(pods []*v1.Pod, nodes []*v1.Node) *testSharedLister {
 		if _, ok := nodeInfoMap[node.Name]; !ok {
 			nodeInfoMap[node.Name] = framework.NewNodeInfo()
 		}
-		err := nodeInfoMap[node.Name].SetNode(node)
-		if err != nil {
-			log.Fatal(err)
-		}
+		nodeInfoMap[node.Name].SetNode(node)
 	}
 
 	for _, v := range nodeInfoMap {

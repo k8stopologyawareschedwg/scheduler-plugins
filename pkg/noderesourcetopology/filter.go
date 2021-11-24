@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"strings"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/klog/v2"
 	v1qos "k8s.io/kubernetes/pkg/apis/core/v1/helper/qos"
@@ -29,6 +29,7 @@ import (
 	"k8s.io/kubernetes/pkg/scheduler/framework"
 
 	topologyv1alpha1 "github.com/k8stopologyawareschedwg/noderesourcetopology-api/pkg/apis/topology/v1alpha1"
+	"sigs.k8s.io/scheduler-plugins/pkg/util"
 )
 
 type PolicyHandler func(pod *v1.Pod, zoneMap topologyv1alpha1.ZoneList) *framework.Status
@@ -127,7 +128,7 @@ func (tm *TopologyMatch) Filter(ctx context.Context, cycleState *framework.Cycle
 	}
 
 	nodeName := nodeInfo.Node().Name
-	nodeTopology := findNodeTopology(nodeName, &tm.nodeResTopologyPlugin)
+	nodeTopology := findNodeTopology(nodeName, tm.lister)
 
 	if nodeTopology == nil {
 		return nil
@@ -149,7 +150,7 @@ func (tm *TopologyMatch) Filter(ctx context.Context, cycleState *framework.Cycle
 // resourceFoundOnNode checks whether a given resource exist at the node level
 // and whether the given quantity is big enough
 func resourceFoundOnNode(resName v1.ResourceName, wantQuantity resource.Quantity, nodeInfo *framework.NodeInfo) bool {
-	resourceList := nodeInfo.Allocatable.ResourceList()
+	resourceList := util.ResourceList(nodeInfo.Allocatable)
 	if gotQuantity, ok := resourceList[resName]; ok {
 		return gotQuantity.Cmp(wantQuantity) >= 0
 	}

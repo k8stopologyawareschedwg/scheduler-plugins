@@ -26,7 +26,6 @@ import (
 
 	"github.com/paypal/load-watcher/pkg/watcher"
 	"github.com/stretchr/testify/assert"
-
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -39,13 +38,12 @@ import (
 	imageutils "k8s.io/kubernetes/test/utils/image"
 
 	"sigs.k8s.io/scheduler-plugins/pkg/apis/config"
-	"sigs.k8s.io/scheduler-plugins/pkg/apis/config/v1beta1"
+	"sigs.k8s.io/scheduler-plugins/pkg/apis/config/v1beta2"
 	"sigs.k8s.io/scheduler-plugins/pkg/trimaran/loadvariationriskbalancing"
 	"sigs.k8s.io/scheduler-plugins/test/util"
 )
 
 func TestLoadVariationRiskBalancingPlugin(t *testing.T) {
-	registry := fwkruntime.Registry{loadvariationriskbalancing.Name: loadvariationriskbalancing.New}
 	metrics := watcher.WatcherMetrics{
 		Window: watcher.Window{},
 		Data: watcher.Data{
@@ -85,37 +83,34 @@ func TestLoadVariationRiskBalancingPlugin(t *testing.T) {
 		assert.Nil(t, err)
 		resp.Write(bytes)
 	}))
-
 	defer server.Close()
-	profile := schedapi.KubeSchedulerProfile{
-		SchedulerName: v1.DefaultSchedulerName,
-		Plugins: &schedapi.Plugins{
-			Score: schedapi.PluginSet{
-				Enabled: []schedapi.Plugin{
-					{Name: loadvariationriskbalancing.Name},
-				},
-				Disabled: []schedapi.Plugin{
-					{Name: "*"},
-				},
-			},
+
+	cfg, err := util.NewDefaultSchedulerComponentConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg.Profiles[0].Plugins.Score = schedapi.PluginSet{
+		Enabled: []schedapi.Plugin{
+			{Name: loadvariationriskbalancing.Name},
 		},
-		PluginConfig: []schedapi.PluginConfig{
-			{
-				Name: loadvariationriskbalancing.Name,
-				Args: &config.LoadVariationRiskBalancingArgs{
-					WatcherAddress:     server.URL,
-					SafeVarianceMargin: v1beta1.DefaultSafeVarianceMargin,
-				},
-			},
+		Disabled: []schedapi.Plugin{
+			{Name: "*"},
 		},
 	}
+	cfg.Profiles[0].PluginConfig = append(cfg.Profiles[0].PluginConfig, schedapi.PluginConfig{
+		Name: loadvariationriskbalancing.Name,
+		Args: &config.LoadVariationRiskBalancingArgs{
+			WatcherAddress:     server.URL,
+			SafeVarianceMargin: v1beta2.DefaultSafeVarianceMargin,
+		},
+	})
 
 	testCtx := util.InitTestSchedulerWithOptions(
 		t,
-		testutils.InitTestMaster(t, "sched-trimaran", nil),
+		testutils.InitTestAPIServer(t, "sched-trimaran", nil),
 		true,
-		scheduler.WithProfiles(profile),
-		scheduler.WithFrameworkOutOfTreeRegistry(registry),
+		scheduler.WithProfiles(cfg.Profiles...),
+		scheduler.WithFrameworkOutOfTreeRegistry(fwkruntime.Registry{loadvariationriskbalancing.Name: loadvariationriskbalancing.New}),
 	)
 
 	defer testutils.CleanupTest(t, testCtx)

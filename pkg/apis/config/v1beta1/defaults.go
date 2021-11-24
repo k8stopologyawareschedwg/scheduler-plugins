@@ -23,7 +23,6 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	schedulerconfig "k8s.io/kube-scheduler/config/v1"
 
 	pluginConfig "sigs.k8s.io/scheduler-plugins/pkg/apis/config"
@@ -83,8 +82,6 @@ func SetDefaultsCoschedulingArgs(obj *CoschedulingArgs) {
 	if obj.DeniedPGExpirationTimeSeconds == nil {
 		obj.DeniedPGExpirationTimeSeconds = &defaultDeniedPGExpirationTimeSeconds
 	}
-
-	// TODO(k/k#96427): get KubeConfigPath and KubeMaster from configuration or command args.
 }
 
 // SetDefaultsNodeResourcesAllocatableArgs sets the defaults parameters for NodeResourceAllocatable.
@@ -96,11 +93,6 @@ func SetDefaultsNodeResourcesAllocatableArgs(obj *NodeResourcesAllocatableArgs) 
 	if obj.Mode == "" {
 		obj.Mode = defaultNodeResourcesAllocatableMode
 	}
-}
-
-// SetDefaultsCapacitySchedulingArgs sets the default parameters for CapacityScheduling plugin.
-func SetDefaultsCapacitySchedulingArgs(obj *CapacitySchedulingArgs) {
-	// TODO(k/k#96427): get KubeConfigPath and KubeMaster from configuration or command args.
 }
 
 // SetDefaultTargetLoadPackingArgs sets the default parameters for TargetLoadPacking plugin
@@ -115,15 +107,14 @@ func SetDefaultTargetLoadPackingArgs(args *TargetLoadPackingArgs) {
 	if args.TargetUtilization == nil || *args.TargetUtilization <= 0 {
 		args.TargetUtilization = &DefaultTargetUtilizationPercent
 	}
+	if args.WatcherAddress == nil && args.MetricProvider.Type == "" {
+		args.MetricProvider.Type = MetricProviderType(DefaultMetricProviderType)
+	}
 }
 
 // SetDefaultLoadVariationRiskBalancingArgs sets the default parameters for LoadVariationRiskBalancing plugin
 func SetDefaultLoadVariationRiskBalancingArgs(args *LoadVariationRiskBalancingArgs) {
-	metricProviderType := string(args.MetricProvider.Type)
-	validMetricProviderType := metricProviderType == string(pluginConfig.KubernetesMetricsServer) ||
-		metricProviderType == string(pluginConfig.Prometheus) ||
-		metricProviderType == string(pluginConfig.SignalFx)
-	if args.WatcherAddress == nil && !validMetricProviderType {
+	if args.WatcherAddress == nil && args.MetricProvider.Type == "" {
 		args.MetricProvider.Type = MetricProviderType(DefaultMetricProviderType)
 	}
 	if args.SafeVarianceMargin == nil || *args.SafeVarianceMargin < 0 {
@@ -138,9 +129,6 @@ func SetDefaultLoadVariationRiskBalancingArgs(args *LoadVariationRiskBalancingAr
 func SetDefaultsNodeResourceTopologyMatchArgs(obj *NodeResourceTopologyMatchArgs) {
 	if obj.KubeConfigPath == nil {
 		obj.KubeConfigPath = &defaultKubeConfigPath
-	}
-	if len(obj.Namespaces) == 0 {
-		obj.Namespaces = []string{metav1.NamespaceDefault}
 	}
 
 	if obj.ScoringStrategy == nil {

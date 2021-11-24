@@ -20,9 +20,9 @@ import (
 	"context"
 	"fmt"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	"k8s.io/client-go/tools/clientcmd"
+	restclient "k8s.io/client-go/rest"
 	"k8s.io/klog/v2"
 
 	topologyv1alpha1 "github.com/k8stopologyawareschedwg/noderesourcetopology-api/pkg/apis/topology/v1alpha1"
@@ -31,31 +31,17 @@ import (
 	listerv1alpha1 "github.com/k8stopologyawareschedwg/noderesourcetopology-api/pkg/generated/listers/topology/v1alpha1"
 )
 
-func findNodeTopology(nodeName string, nodeResTopoPlugin *nodeResTopologyPlugin) *topologyv1alpha1.NodeResourceTopology {
-	klog.V(5).InfoS("Namespaces for nodeResTopoPlugin", "namespaces", nodeResTopoPlugin.namespaces)
-	for _, namespace := range nodeResTopoPlugin.namespaces {
-		klog.V(5).InfoS("Lister for nodeResTopoPlugin", "lister", nodeResTopoPlugin.lister)
-		// NodeTopology couldn't be placed in several namespaces simultaneously
-		lister := nodeResTopoPlugin.lister
-		nodeTopology, err := (*lister).NodeResourceTopologies(namespace).Get(nodeName)
-		if err != nil {
-			klog.V(5).ErrorS(err, "Cannot get NodeTopologies from NodeResourceTopologyNamespaceLister")
-			continue
-		}
-		if nodeTopology != nil {
-			return nodeTopology
-		}
+func findNodeTopology(nodeName string, lister listerv1alpha1.NodeResourceTopologyLister) *topologyv1alpha1.NodeResourceTopology {
+	klog.V(5).InfoS("Lister for nodeResTopoPlugin", "lister", lister)
+	nodeTopology, err := lister.Get(nodeName)
+	if err != nil {
+		klog.V(5).ErrorS(err, "Cannot get NodeTopologies from NodeResourceTopologyLister")
+		return nil
 	}
-	return nil
+	return nodeTopology
 }
 
-func initNodeTopologyInformer(masterOverride, kubeConfigPath *string) (*listerv1alpha1.NodeResourceTopologyLister, error) {
-	kubeConfig, err := clientcmd.BuildConfigFromFlags(*masterOverride, *kubeConfigPath)
-	if err != nil {
-		klog.ErrorS(err, "Cannot create kubeconfig", "masterOverride", *masterOverride, "kubeConfigPath", *kubeConfigPath)
-		return nil, err
-	}
-
+func initNodeTopologyInformer(kubeConfig *restclient.Config) (listerv1alpha1.NodeResourceTopologyLister, error) {
 	topoClient, err := topoclientset.NewForConfig(kubeConfig)
 	if err != nil {
 		klog.ErrorS(err, "Cannot create clientset for NodeTopologyResource", "kubeConfig", kubeConfig)
@@ -71,7 +57,7 @@ func initNodeTopologyInformer(masterOverride, kubeConfigPath *string) (*listerv1
 	topologyInformerFactory.Start(ctx.Done())
 	topologyInformerFactory.WaitForCacheSync(ctx.Done())
 
-	return &nodeResourceTopologyLister, nil
+	return nodeResourceTopologyLister, nil
 }
 
 func createNUMANodeList(zones topologyv1alpha1.ZoneList) NUMANodeList {
