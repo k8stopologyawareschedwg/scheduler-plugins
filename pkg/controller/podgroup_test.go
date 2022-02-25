@@ -17,7 +17,6 @@ import (
 	"sigs.k8s.io/scheduler-plugins/pkg/apis/scheduling/v1alpha1"
 	pgfake "sigs.k8s.io/scheduler-plugins/pkg/generated/clientset/versioned/fake"
 	schedinformer "sigs.k8s.io/scheduler-plugins/pkg/generated/informers/externalversions"
-	"sigs.k8s.io/scheduler-plugins/pkg/util"
 )
 
 func Test_Run(t *testing.T) {
@@ -110,7 +109,7 @@ func Test_Run(t *testing.T) {
 			podNextPhase:      v1.PodSucceeded,
 		},
 		{
-			name:               "Group group should not enqueue, created too long",
+			name:               "Group should not enqueue, created too long",
 			pgName:             "pg8",
 			minMember:          2,
 			podNames:           []string{"pod1", "pod2"},
@@ -120,7 +119,7 @@ func Test_Run(t *testing.T) {
 			podGroupCreateTime: &createTime,
 		},
 		{
-			name:              "Group group min member more than Pod number",
+			name:              "Group min member more than Pod number",
 			pgName:            "pg9",
 			minMember:         3,
 			podNames:          []string{"pod91", "pod92"},
@@ -128,11 +127,25 @@ func Test_Run(t *testing.T) {
 			previousPhase:     v1alpha1.PodGroupPending,
 			desiredGroupPhase: v1alpha1.PodGroupPreScheduling,
 		},
+		{
+			name:              "Group status convert from running to pending",
+			pgName:            "pg10",
+			minMember:         2,
+			podNames:          []string{},
+			podPhase:          v1.PodPending,
+			previousPhase:     v1alpha1.PodGroupRunning,
+			desiredGroupPhase: v1alpha1.PodGroupPending,
+		},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			ps := makePods(c.podNames, c.pgName, c.podPhase)
-			kubeClient := fake.NewSimpleClientset(ps[0], ps[1])
+			var kubeClient *fake.Clientset
+			if len(c.podNames) == 0 {
+				kubeClient = fake.NewSimpleClientset()
+			} else {
+				ps := makePods(c.podNames, c.pgName, c.podPhase)
+				kubeClient = fake.NewSimpleClientset(ps[0], ps[1])
+			}
 			pg := makePG(c.pgName, 2, c.previousPhase, c.podGroupCreateTime)
 			pgClient := pgfake.NewSimpleClientset(pg)
 
@@ -174,7 +187,7 @@ func makePods(podNames []string, pgName string, phase v1.PodPhase) []*v1.Pod {
 	pds := make([]*v1.Pod, 0)
 	for _, name := range podNames {
 		pod := st.MakePod().Namespace("default").Name(name).Obj()
-		pod.Labels = map[string]string{util.PodGroupLabel: pgName}
+		pod.Labels = map[string]string{v1alpha1.PodGroupLabel: pgName}
 		pod.Status.Phase = phase
 		pds = append(pds, pod)
 	}

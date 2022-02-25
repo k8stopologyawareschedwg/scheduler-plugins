@@ -206,7 +206,7 @@ func (ctrl *PodGroupController) syncHandler(key string) error {
 	}
 
 	pgCopy := pg.DeepCopy()
-	selector := labels.Set(map[string]string{util.PodGroupLabel: pgCopy.Name}).AsSelector()
+	selector := labels.Set(map[string]string{schedv1alpha1.PodGroupLabel: pgCopy.Name}).AsSelector()
 	pods, err := ctrl.podLister.List(selector)
 	if err != nil {
 		klog.ErrorS(err, "List pods for group failed", "podGroup", klog.KObj(pgCopy))
@@ -242,6 +242,11 @@ func (ctrl *PodGroupController) syncHandler(key string) error {
 		pgCopy.Status.Failed = failed
 		pgCopy.Status.Succeeded = succeeded
 		pgCopy.Status.Running = running
+
+		if len(pods) == 0 {
+			pgCopy.Status.Phase = schedv1alpha1.PodGroupPending
+			break
+		}
 
 		if pgCopy.Status.Scheduled >= pgCopy.Spec.MinMember && pgCopy.Status.Phase == schedv1alpha1.PodGroupScheduling {
 			pgCopy.Status.Phase = schedv1alpha1.PodGroupScheduled

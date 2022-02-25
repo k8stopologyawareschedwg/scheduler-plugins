@@ -19,6 +19,14 @@ Document capturing the NodeResourceTopology API Custom Resource Definition Stand
 
 In case the cumulative count of node resource allocatable appear to be the same for both the nodes in the cluster, topology aware scheduler plugin uses the CRD instance corresponding to the nodes to obtain the resource topology information to make a topology-aware scheduling decision.
 
+**NOTE:**
+- [NodeResourceTopology](https://github.com/k8stopologyawareschedwg/noderesourcetopology-api) version [v0.0.12](https://github.com/k8stopologyawareschedwg/noderesourcetopology-api/tree/v0.0.12) onwards, CRD has been changed from namespace to cluster scoped. 
+Scheduler plugin version > v0.21.6 depends on NodeResourceTopology CRD v0.0.12 and the namespace field has been deprecated from the NodeResourceTopology scheduler config args.
+
+Dependency:
+- Scheduler plugin version <= v0.21.6 depends on the [NodeResourceTopology](https://github.com/k8stopologyawareschedwg/noderesourcetopology-api) CRD version [v0.0.10](https://github.com/k8stopologyawareschedwg/noderesourcetopology-api/tree/v0.0.10).  
+- Scheduler plugin version > v0.21.6 depends on the [NodeResourceTopology](https://github.com/k8stopologyawareschedwg/noderesourcetopology-api) CRD version [v0.0.12](https://github.com/k8stopologyawareschedwg/noderesourcetopology-api/tree/v0.0.12).
+
 ### Config
 
 Enable the "NodeResourceTopologyMatch" Filter and Score plugins via SchedulerConfigConfiguration.
@@ -43,9 +51,9 @@ profiles:
   pluginConfig:
   - name: NodeResourceTopologyMatch
     args:
-      # other strategies are MostAllocatable and BalancedAllocation
+      # other strategies are MostAllocated and BalancedAllocation
       scoringStrategy:
-        type: "LeastAllocatable"
+        type: "LeastAllocated"
 ```
 
 ### Demo
@@ -55,6 +63,8 @@ Let us assume we have two nodes in a cluster deployed with sample-device-plugin 
 ![Setup](numa-topology.png)
 
 The hardware topology corresponding to both the nodes is represented by the below CRD instances. These CRD instances are supposed to be created by Node Agents like [Resource Topology Exporter](https://github.com/k8stopologyawareschedwg/resource-topology-exporter) (RTE) or Node feature Discovery (NFD). Please refer to issue [Exposing Hardware Topology through CRDs in NFD](https://github.com/kubernetes-sigs/node-feature-discovery/issues/333) and [Design document](https://docs.google.com/document/d/1Q-4wSu1tzmbOXyGk_2r5_mK6JdXXJA-bOd3cAtBFnwo/edit?ts=5f24171f#) which captures details of enhancing NFD to expose node resource topology through CRDs.
+
+For configuring your cluster with [NFD-topology updater](https://github.com/kubernetes-sigs/node-feature-discovery/blob/master/docs/get-started/introduction.md#nfd-topology-updater), a software component in Node Feature Discovery which creates NodeResourceTopology CRs corresponding to nodes in the cluster follow the Quick Start guide [here]( https://github.com/kubernetes-sigs/node-feature-discovery/blob/master/docs/get-started/quick-start.md#additional-optional-installation-steps).
 
 ```yaml
 # Worker Node A CRD spec
@@ -140,7 +150,7 @@ zones:
              $ kubectl get noderesourcetopologies.topology.node.k8s.io
             ```
 
-         1. Deploy the CRs representative of the hardware topology of the worker-node-A and worker-node-B:
+         1. Deploy the CRs representative of the hardware topology of the worker-node-A and worker-node-B if CRs haven't been created using RTE or NFD as mentioned above:
 
             ```bash
              $ kubectl create -f worker-node-A.yaml
@@ -149,7 +159,6 @@ zones:
             NOTE: In case you are testing this demo by creating CRs manually, ensure that the names of the nodes in the cluster match the CR names.
 
 - Copy cluster kubeconfig file to /etc/kubernetes/scheduler.conf
-
 - Build the image locally
 
     ```bash
@@ -210,8 +219,10 @@ spec:
       schedulerName: topo-aware-scheduler
       containers:
       - name: test-deployment-1-container-1
-        image: nginx:1.7.9
+        image: quay.io/fromani/numalign
         imagePullPolicy: IfNotPresent
+        command: ["/bin/sh", "-c"]
+        args: [ "while true; do numalign; sleep 100000; done;" ]
         resources:
           limits:
             cpu: 1

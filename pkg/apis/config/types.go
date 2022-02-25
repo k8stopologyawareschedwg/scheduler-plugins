@@ -19,7 +19,7 @@ package config
 import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	schedulerconfig "k8s.io/kube-scheduler/config/v1"
+	schedconfig "k8s.io/kubernetes/pkg/scheduler/apis/config"
 )
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -55,7 +55,7 @@ type NodeResourcesAllocatableArgs struct {
 	// An example resource set might include "cpu" (millicores) and "memory" (bytes)
 	// with weights of 1<<20 and 1 respectfully. That would mean 1 MiB has equivalent
 	// weight as 1 millicore.
-	Resources []schedulerconfig.ResourceSpec `json:"resources,omitempty"`
+	Resources []schedconfig.ResourceSpec `json:"resources,omitempty"`
 
 	// Whether to prioritize nodes with least or most allocatable resources.
 	Mode ModeType `json:"mode,omitempty"`
@@ -133,7 +133,7 @@ type ScoringStrategy struct {
 
 	// Resources a list of pairs <resource, weight> to be considered while scoring
 	// allowed weights start from 1.
-	Resources []schedulerconfig.ResourceSpec
+	Resources []schedconfig.ResourceSpec
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -145,3 +145,8 @@ type NodeResourceTopologyMatchArgs struct {
 	// ScoringStrategy a scoring model that determine how the plugin will score the nodes.
 	ScoringStrategy ScoringStrategy
 }
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// PreemptionTolerationArgs reuses DefaultPluginArgs.
+type PreemptionTolerationArgs schedconfig.DefaultPreemptionArgs
