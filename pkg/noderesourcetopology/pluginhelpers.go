@@ -19,135 +19,93 @@ package noderesourcetopology
 import (
 	"context"
 	"fmt"
+	"time"
 
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
-	restclient "k8s.io/client-go/rest"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog/v2"
+	"k8s.io/kubernetes/pkg/scheduler/framework"
 
-	topologyv1alpha1 "github.com/k8stopologyawareschedwg/noderesourcetopology-api/pkg/apis/topology/v1alpha1"
+	topologyv1alpha2 "github.com/k8stopologyawareschedwg/noderesourcetopology-api/pkg/apis/topology/v1alpha2"
 	topoclientset "github.com/k8stopologyawareschedwg/noderesourcetopology-api/pkg/generated/clientset/versioned"
 	topologyinformers "github.com/k8stopologyawareschedwg/noderesourcetopology-api/pkg/generated/informers/externalversions"
-	listerv1alpha1 "github.com/k8stopologyawareschedwg/noderesourcetopology-api/pkg/generated/listers/topology/v1alpha1"
+
+	apiconfig "sigs.k8s.io/scheduler-plugins/apis/config"
+	nrtcache "sigs.k8s.io/scheduler-plugins/pkg/noderesourcetopology/cache"
+	"sigs.k8s.io/scheduler-plugins/pkg/noderesourcetopology/stringify"
 )
 
-func findNodeTopology(nodeName string, lister listerv1alpha1.NodeResourceTopologyLister) *topologyv1alpha1.NodeResourceTopology {
-	klog.V(5).InfoS("Lister for nodeResTopoPlugin", "lister", lister)
-	nodeTopology, err := lister.Get(nodeName)
+func initNodeTopologyInformer(tcfg *apiconfig.NodeResourceTopologyMatchArgs, handle framework.Handle) (nrtcache.Interface, error) {
+	topoClient, err := topoclientset.NewForConfig(handle.KubeConfig())
 	if err != nil {
-		klog.V(5).ErrorS(err, "Cannot get NodeTopologies from NodeResourceTopologyLister")
-		return nil
-	}
-	return nodeTopology
-}
-
-func initNodeTopologyInformer(kubeConfig *restclient.Config) (listerv1alpha1.NodeResourceTopologyLister, error) {
-	topoClient, err := topoclientset.NewForConfig(kubeConfig)
-	if err != nil {
-		klog.ErrorS(err, "Cannot create clientset for NodeTopologyResource", "kubeConfig", kubeConfig)
+		klog.ErrorS(err, "Cannot create clientset for NodeTopologyResource", "kubeConfig", handle.KubeConfig())
 		return nil, err
 	}
 
 	topologyInformerFactory := topologyinformers.NewSharedInformerFactory(topoClient, 0)
-	nodeTopologyInformer := topologyInformerFactory.Topology().V1alpha1().NodeResourceTopologies()
-	nodeResourceTopologyLister := nodeTopologyInformer.Lister()
+	nodeTopologyInformer := topologyInformerFactory.Topology().V1alpha2().NodeResourceTopologies()
+	nodeTopologyLister := nodeTopologyInformer.Lister()
 
 	klog.V(5).InfoS("Start nodeTopologyInformer")
 	ctx := context.Background()
 	topologyInformerFactory.Start(ctx.Done())
 	topologyInformerFactory.WaitForCacheSync(ctx.Done())
 
-	return nodeResourceTopologyLister, nil
+	if tcfg.CacheResyncPeriodSeconds <= 0 {
+		return nrtcache.NewPassthrough(nodeTopologyLister), nil
+	}
+
+	podSharedInformer := nrtcache.InformerFromHandle(handle)
+	podIndexer := nrtcache.NewNodeNameIndexer(podSharedInformer)
+	nrtCache, err := nrtcache.NewOverReserve(nodeTopologyLister, podIndexer)
+	if err != nil {
+		return nil, err
+	}
+
+	if fwk, ok := handle.(framework.Framework); ok {
+		profileName := fwk.ProfileName()
+		klog.InfoS("setting up foreign pods detection", "name", profileName)
+		nrtcache.RegisterSchedulerProfileName(profileName)
+		nrtcache.SetupForeignPodsDetector(profileName, podSharedInformer, nrtCache)
+	} else {
+		klog.Warningf("cannot determine the scheduler profile names - no foreign pod detection enabled")
+	}
+
+	resyncPeriod := time.Duration(tcfg.CacheResyncPeriodSeconds) * time.Second
+	go wait.Forever(nrtCache.Resync, resyncPeriod)
+
+	klog.V(3).InfoS("enable NodeTopology cache (needs the Reserve plugin)", "resyncPeriod", resyncPeriod)
+
+	return nrtCache, nil
 }
 
-func createNUMANodeList(zones topologyv1alpha1.ZoneList) NUMANodeList {
-	nodes := make(NUMANodeList, 0)
+func createNUMANodeList(zones topologyv1alpha2.ZoneList) NUMANodeList {
+	nodes := make(NUMANodeList, 0, len(zones))
 	for _, zone := range zones {
-		if zone.Type == "Node" {
-			var numaID int
-			_, err := fmt.Sscanf(zone.Name, "node-%d", &numaID)
-			if err != nil {
-				klog.ErrorS(nil, "Invalid zone format", "zone", zone.Name)
-				continue
-			}
-			if numaID > 63 || numaID < 0 {
-				klog.ErrorS(nil, "Invalid NUMA id range", "numaID", numaID)
-				continue
-			}
-			resources := extractResources(zone)
-			nodes = append(nodes, NUMANode{NUMAID: numaID, Resources: resources})
+		if zone.Type != "Node" {
+			continue
 		}
+		var numaID int
+		_, err := fmt.Sscanf(zone.Name, "node-%d", &numaID)
+		if err != nil {
+			klog.ErrorS(nil, "Invalid zone format", "zone", zone.Name)
+			continue
+		}
+		if numaID > 63 || numaID < 0 {
+			klog.ErrorS(nil, "Invalid NUMA id range", "numaID", numaID)
+			continue
+		}
+		resources := extractResources(zone)
+		klog.V(6).InfoS("extracted NUMA resources", stringify.ResourceListToLoggable(zone.Name, resources)...)
+		nodes = append(nodes, NUMANode{NUMAID: numaID, Resources: resources})
 	}
 	return nodes
 }
 
-func makePodByResourceList(resources *v1.ResourceList) *v1.Pod {
-	return &v1.Pod{
-		Spec: v1.PodSpec{
-			Containers: []v1.Container{
-				{
-					Resources: v1.ResourceRequirements{
-						Requests: *resources,
-						Limits:   *resources,
-					},
-				},
-			},
-		},
-	}
-}
-
-func makeResourceListFromZones(zones topologyv1alpha1.ZoneList) v1.ResourceList {
-	result := make(v1.ResourceList)
-	for _, zone := range zones {
-		for _, resInfo := range zone.Resources {
-			resQuantity := resInfo.Available
-			if quantity, ok := result[v1.ResourceName(resInfo.Name)]; ok {
-				resQuantity.Add(quantity)
-			}
-			result[v1.ResourceName(resInfo.Name)] = resQuantity
-		}
-	}
-	return result
-}
-
-func MakeTopologyResInfo(name, capacity, available string) topologyv1alpha1.ResourceInfo {
-	return topologyv1alpha1.ResourceInfo{
-		Name:      name,
-		Capacity:  resource.MustParse(capacity),
-		Available: resource.MustParse(available),
-	}
-}
-
-func makePodByResourceListWithManyContainers(resources *v1.ResourceList, containerCount int) *v1.Pod {
-	var containers []v1.Container
-
-	for i := 0; i < containerCount; i++ {
-		containers = append(containers, v1.Container{
-			Resources: v1.ResourceRequirements{
-				Requests: *resources,
-				Limits:   *resources,
-			},
-		})
-	}
-	return &v1.Pod{
-		Spec: v1.PodSpec{
-			Containers: containers,
-		},
-	}
-}
-
-func extractResources(zone topologyv1alpha1.Zone) v1.ResourceList {
-	res := make(v1.ResourceList)
+func extractResources(zone topologyv1alpha2.Zone) corev1.ResourceList {
+	res := make(corev1.ResourceList)
 	for _, resInfo := range zone.Resources {
-		klog.V(5).InfoS("Extract resources for zone", "resName", resInfo.Name, "resAvailable", resInfo.Available)
-		res[v1.ResourceName(resInfo.Name)] = resInfo.Available
+		res[corev1.ResourceName(resInfo.Name)] = resInfo.Available.DeepCopy()
 	}
 	return res
-}
-
-func newPolicyHandlerMap() PolicyHandlerMap {
-	return PolicyHandlerMap{
-		topologyv1alpha1.SingleNUMANodePodLevel:       newPodScopedHandler(),
-		topologyv1alpha1.SingleNUMANodeContainerLevel: newContainerScopedHandler(),
-	}
 }

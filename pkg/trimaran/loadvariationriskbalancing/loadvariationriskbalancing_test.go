@@ -38,8 +38,8 @@ import (
 	"k8s.io/kubernetes/pkg/scheduler/framework/runtime"
 	st "k8s.io/kubernetes/pkg/scheduler/testing"
 
-	pluginConfig "sigs.k8s.io/scheduler-plugins/pkg/apis/config"
-	"sigs.k8s.io/scheduler-plugins/pkg/apis/config/v1beta2"
+	pluginConfig "sigs.k8s.io/scheduler-plugins/apis/config"
+	"sigs.k8s.io/scheduler-plugins/apis/config/v1beta2"
 	testutil "sigs.k8s.io/scheduler-plugins/test/util"
 )
 
@@ -49,6 +49,10 @@ type testSharedLister struct {
 	nodes       []*v1.Node
 	nodeInfos   []*framework.NodeInfo
 	nodeInfoMap map[string]*framework.NodeInfo
+}
+
+func (f *testSharedLister) StorageInfos() framework.StorageInfoLister {
+	return nil
 }
 
 func (f *testSharedLister) NodeInfos() framework.NodeInfoLister {
@@ -81,7 +85,7 @@ func TestNew(t *testing.T) {
 	defer server.Close()
 
 	loadVariationRiskBalancingArgs := pluginConfig.LoadVariationRiskBalancingArgs{
-		WatcherAddress:          server.URL,
+		TrimaranSpec:            pluginConfig.TrimaranSpec{WatcherAddress: server.URL},
 		SafeVarianceMargin:      v1beta2.DefaultSafeVarianceMargin,
 		SafeVarianceSensitivity: v1beta2.DefaultSafeVarianceSensitivity,
 	}
@@ -108,7 +112,7 @@ func TestNew(t *testing.T) {
 
 	// bad arguments will be substituted by default values
 	badArgs := pluginConfig.LoadVariationRiskBalancingArgs{
-		WatcherAddress:     server.URL,
+		TrimaranSpec:       pluginConfig.TrimaranSpec{WatcherAddress: server.URL},
 		SafeVarianceMargin: -5,
 	}
 	badp, err := New(&badArgs, fh)
@@ -334,7 +338,7 @@ func TestScore(t *testing.T) {
 			state := framework.NewCycleState()
 
 			loadVariationRiskBalancingArgs := pluginConfig.LoadVariationRiskBalancingArgs{
-				WatcherAddress:          server.URL,
+				TrimaranSpec:            pluginConfig.TrimaranSpec{WatcherAddress: server.URL},
 				SafeVarianceMargin:      v1beta2.DefaultSafeVarianceMargin,
 				SafeVarianceSensitivity: v1beta2.DefaultSafeVarianceSensitivity,
 			}

@@ -22,7 +22,7 @@ import (
 	"net/http"
 
 	rest "k8s.io/client-go/rest"
-	v1alpha1 "sigs.k8s.io/scheduler-plugins/pkg/apis/scheduling/v1alpha1"
+	v1alpha1 "sigs.k8s.io/scheduler-plugins/apis/scheduling/v1alpha1"
 	"sigs.k8s.io/scheduler-plugins/pkg/generated/clientset/versioned/scheme"
 )
 
@@ -32,7 +32,7 @@ type SchedulingV1alpha1Interface interface {
 	PodGroupsGetter
 }
 
-// SchedulingV1alpha1Client is used to interact with features provided by the scheduling.sigs.k8s.io group.
+// SchedulingV1alpha1Client is used to interact with features provided by the scheduling.x-k8s.io group.
 type SchedulingV1alpha1Client struct {
 	restClient rest.Interface
 }

@@ -24,6 +24,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/informers"
 	clientsetfake "k8s.io/client-go/kubernetes/fake"
 	schedulerconfig "k8s.io/kubernetes/pkg/scheduler/apis/config"
@@ -34,7 +35,7 @@ import (
 	frameworkruntime "k8s.io/kubernetes/pkg/scheduler/framework/runtime"
 	st "k8s.io/kubernetes/pkg/scheduler/testing"
 
-	"sigs.k8s.io/scheduler-plugins/pkg/apis/config"
+	"sigs.k8s.io/scheduler-plugins/apis/config"
 )
 
 func TestNodeResourcesAllocatable(t *testing.T) {
@@ -253,6 +254,7 @@ func TestNodeResourcesAllocatable(t *testing.T) {
 			fh, err := st.NewFramework(
 				registeredPlugins,
 				"default-scheduler",
+				wait.NeverStop,
 				frameworkruntime.WithClientSet(cs),
 				frameworkruntime.WithInformerFactory(informerFactory),
 				frameworkruntime.WithSnapshotSharedLister(fakeSharedLister),
@@ -340,6 +342,10 @@ var _ framework.SharedLister = &fakeSharedLister{}
 
 type fakeSharedLister struct {
 	nodes []*framework.NodeInfo
+}
+
+func (f *fakeSharedLister) StorageInfos() framework.StorageInfoLister {
+	return nil
 }
 
 func (f *fakeSharedLister) NodeInfos() framework.NodeInfoLister {

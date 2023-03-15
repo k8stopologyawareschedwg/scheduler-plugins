@@ -17,7 +17,8 @@ limitations under the License.
 package util
 
 import (
-	"k8s.io/kube-scheduler/config/v1beta2"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/kube-scheduler/config/v1beta3"
 	"k8s.io/kubernetes/pkg/scheduler/apis/config"
 	"k8s.io/kubernetes/pkg/scheduler/apis/config/scheme"
 	"k8s.io/kubernetes/pkg/scheduler/framework"
@@ -36,14 +37,13 @@ func NewFramework(fns []st.RegisterPluginFunc, cfgs []config.PluginConfig, profi
 		f(&registry, profile)
 	}
 	profile.PluginConfig = cfgs
-	return runtime.NewFramework(registry, profile, opts...)
+	return runtime.NewFramework(registry, profile, wait.NeverStop, opts...)
 }
 
 // NewDefaultSchedulerComponentConfig returns a default scheduler cc object.
 // We need this function due to k/k#102796 - default profile needs to built manually.
 func NewDefaultSchedulerComponentConfig() (config.KubeSchedulerConfiguration, error) {
-	// TODO(Huang-Wei): use v1beta3 after we fix the upstream bug k/k#108083.
-	var versionedCfg v1beta2.KubeSchedulerConfiguration
+	var versionedCfg v1beta3.KubeSchedulerConfiguration
 	scheme.Scheme.Default(&versionedCfg)
 	cfg := config.KubeSchedulerConfiguration{}
 	if err := scheme.Scheme.Convert(&versionedCfg, &cfg, nil); err != nil {

@@ -27,7 +27,7 @@ import (
 	schedulerconfig "k8s.io/kubernetes/pkg/scheduler/apis/config"
 	"k8s.io/kubernetes/pkg/scheduler/framework"
 
-	"sigs.k8s.io/scheduler-plugins/pkg/apis/config"
+	"sigs.k8s.io/scheduler-plugins/apis/config"
 )
 
 // Allocatable is a score plugin that favors nodes based on their allocatable
@@ -131,7 +131,7 @@ func resourceScorer(resToWeightMap resourceToWeightMap, mode config.ModeType) fu
 }
 
 func score(capacity int64, mode config.ModeType) int64 {
-	switch config.ModeType(mode) {
+	switch mode {
 	case config.Least:
 		return -1 * capacity
 	case config.Most:
