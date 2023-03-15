@@ -3,9 +3,9 @@
 /_output/
 /_artifacts/
 /build/kube-scheduler
-
-# used for the code generators only
-/vendor/
+bin
+testbin/*
+hack/tools/bin/*
 
 # macOS
 .DS_Store

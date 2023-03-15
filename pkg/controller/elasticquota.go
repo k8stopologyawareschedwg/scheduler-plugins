@@ -32,7 +32,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	quota "k8s.io/apiserver/pkg/quota/v1"
-	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	coreinformer "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -42,10 +41,9 @@ import (
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog/v2"
-	kubefeatures "k8s.io/kubernetes/pkg/features"
 	"sigs.k8s.io/scheduler-plugins/pkg/util"
 
-	schedv1alpha1 "sigs.k8s.io/scheduler-plugins/pkg/apis/scheduling/v1alpha1"
+	schedv1alpha1 "sigs.k8s.io/scheduler-plugins/apis/scheduling/v1alpha1"
 	schedclientset "sigs.k8s.io/scheduler-plugins/pkg/generated/clientset/versioned"
 	schedinformer "sigs.k8s.io/scheduler-plugins/pkg/generated/informers/externalversions/scheduling/v1alpha1"
 	schedlister "sigs.k8s.io/scheduler-plugins/pkg/generated/listers/scheduling/v1alpha1"
@@ -202,7 +200,7 @@ func (ctrl *ElasticQuotaController) syncHandler(key string) error {
 	}
 	if _, err = ctrl.schedClient.SchedulingV1alpha1().ElasticQuotas(namespace).
 		Patch(context.TODO(), eq.Name, types.MergePatchType,
-			patch, metav1.PatchOptions{}); err != nil {
+			patch, metav1.PatchOptions{}, "status"); err != nil {
 		return err
 	}
 	ctrl.recorder.Event(eq, v1.EventTypeNormal, "Synced", fmt.Sprintf("Elastic Quota %s synced successfully", key))
@@ -296,20 +294,21 @@ func (ctrl *ElasticQuotaController) podDeleted(obj interface{}) {
 // Example:
 //
 // Pod:
-//   InitContainers
-//     IC1:
-//       CPU: 2
-//       Memory: 1G
-//     IC2:
-//       CPU: 2
-//       Memory: 3G
-//   Containers
-//     C1:
-//       CPU: 2
-//       Memory: 1G
-//     C2:
-//       CPU: 1
-//       Memory: 1G
+//
+//	InitContainers
+//	  IC1:
+//	    CPU: 2
+//	    Memory: 1G
+//	  IC2:
+//	    CPU: 2
+//	    Memory: 3G
+//	Containers
+//	  C1:
+//	    CPU: 2
+//	    Memory: 1G
+//	  C2:
+//	    CPU: 1
+//	    Memory: 1G
 //
 // Result: CPU: 3, Memory: 3G
 func computePodResourceRequest(pod *v1.Pod) v1.ResourceList {
@@ -323,7 +322,7 @@ func computePodResourceRequest(pod *v1.Pod) v1.ResourceList {
 		initRes = quota.Max(initRes, container.Resources.Requests)
 	}
 	// If Overhead is being utilized, add to the total requests for the pod
-	if pod.Spec.Overhead != nil && utilfeature.DefaultFeatureGate.Enabled(kubefeatures.PodOverhead) {
+	if pod.Spec.Overhead != nil {
 		quota.Add(result, pod.Spec.Overhead)
 	}
 	// take max_resource for init_containers and containers
