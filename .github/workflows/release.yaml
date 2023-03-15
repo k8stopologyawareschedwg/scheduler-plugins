@@ -14,7 +14,7 @@ defaults:
     shell: bash
 
 jobs:
-  release-build:
+  release:
     runs-on: ubuntu-20.04
     steps:
       - name: Checkout sources
@@ -43,8 +43,6 @@ jobs:
 
       - name: integration-test
         run: |
-          ./hack/install-etcd.sh
-          export PATH=$PATH:$(pwd)/etcd
           make integration-test
 
       - name: build controller image
