@@ -33,6 +33,7 @@ import (
 // well-known structured log keys
 const (
 	KeyLogID  string = "logID"
+	KeyPod    string = "pod"
 	KeyPodUID string = "podUID"
 	KeyNode   string = "node"
 	KeyFlow   string = "flow"
@@ -44,12 +45,17 @@ const (
 )
 
 const (
+	SubsystemForeignPods string = "foreignpods"
+	SubsystemNRTCache    string = "nrtcache"
+)
+
+const (
 	FlowCacheSync string = "cachesync"
 	FlowFilter    string = "filter"
 	FlowPostBind  string = "postbind"
 	FlowReserve   string = "reserve"
-	FlowUnreserve string = "unreserve"
 	FlowScore     string = "score"
+	FlowUnreserve string = "unreserve"
 )
 
 var logh logr.Logger
