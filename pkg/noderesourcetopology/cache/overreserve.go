@@ -158,7 +158,7 @@ func (ov *OverReserve) UnreserveNodeResources(nodeName string, pod *corev1.Pod) 
 	}
 
 	nodeAssumedResources.DeletePod(pod)
-	lh.V(5).Info("post release", "assumedResources", nodeAssumedResources.String())
+	lh.V(4).Info("post release", "assumedResources", nodeAssumedResources.String())
 }
 
 // NodesMaybeOverReserved returns a slice of all the node names which have been discarded previously,
@@ -207,7 +207,7 @@ func (ov *OverReserve) Resync() {
 	nodeNames := ov.NodesMaybeOverReserved(lh)
 	// avoid as much as we can unnecessary work and logs.
 	if len(nodeNames) == 0 {
-		lh.V(6).Info("no dirty nodes detected")
+		lh.V(5).Info("no dirty nodes detected")
 		return
 	}
 
@@ -217,9 +217,6 @@ func (ov *OverReserve) Resync() {
 		lh.Error(err, "cannot find the mapping between running pods and nodes")
 		return
 	}
-
-	lh.V(6).Info("resync NodeTopology cache starting")
-	defer lh.V(6).Info("resync NodeTopology cache complete")
 
 	var nrtUpdates []*topologyv1alpha2.NodeResourceTopology
 	for _, nodeName := range nodeNames {
@@ -248,12 +245,12 @@ func (ov *OverReserve) Resync() {
 			continue
 		}
 
-		lh.V(6).Info("trying to sync NodeTopology", "fingerprint", pfpExpected, "onlyExclusiveResources", onlyExclRes)
+		lh.V(4).Info("trying to sync NodeTopology", "fingerprint", pfpExpected, "onlyExclusiveResources", onlyExclRes)
 
 		err = checkPodFingerprintForNode(lh, objs, nodeName, pfpExpected, onlyExclRes)
 		if errors.Is(err, podfingerprint.ErrSignatureMismatch) {
 			// can happen, not critical
-			lh.V(5).Info("NodeTopology podset fingerprint mismatch")
+			lh.V(4).Info("NodeTopology podset fingerprint mismatch")
 			continue
 		}
 		if err != nil {

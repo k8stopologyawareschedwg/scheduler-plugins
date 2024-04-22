@@ -216,7 +216,7 @@ func (tm *TopologyMatch) Filter(ctx context.Context, cycleState *framework.Cycle
 		return nil
 	}
 
-	lh.V(5).Info("found nrt data", "object", stringify.NodeResourceTopologyResources(nodeTopology))
+	lh.V(4).Info("found nrt data", "object", stringify.NodeResourceTopologyResources(nodeTopology))
 
 	handler := filterHandlerFromTopologyManagerConfig(topologyManagerConfigFromNodeResourceTopology(lh, nodeTopology))
 	if handler == nil {
