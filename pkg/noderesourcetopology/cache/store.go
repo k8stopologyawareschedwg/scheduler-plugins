@@ -240,8 +240,8 @@ func checkPodFingerprintForNode(lh logr.Logger, objs []podData, nodeName, pfpExp
 	}
 	pfpComputed := pfp.Sign()
 
-	lh.V(5).Info("podset fingerprint check", "expected", pfpExpected, "computed", pfpComputed, "onlyExclusiveResources", onlyExclRes)
-	lh.V(6).Info("podset fingerprint debug", "status", st.Repr())
+	lh.V(4).Info("podset fingerprint check", "expected", pfpExpected, "computed", pfpComputed, "onlyExclusiveResources", onlyExclRes)
+	lh.V(5).Info("podset fingerprint debug", "status", st.Repr())
 
 	err := pfp.Check(pfpExpected)
 	podfingerprint.MarkCompleted(st)
