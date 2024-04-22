@@ -203,7 +203,7 @@ func (tm *TopologyMatch) Filter(ctx context.Context, cycleState *framework.Cycle
 
 	nodeName := nodeInfo.Node().Name
 
-	lh := logging.Log().WithValues(logging.KeyPod, logging.PodLogID(pod), logging.KeyPodUID, pod.GetUID(), logging.KeyNode, nodeName, logging.KeyFlow, logging.FlowFilter)
+	lh := logging.FromContextWithValues(ctx, pod, nodeName, logging.FlowFilter)
 	lh.V(4).Info(logging.FlowBegin)
 	defer lh.V(4).Info(logging.FlowEnd)
 
