@@ -50,7 +50,7 @@ func SetupForeignPodsDetector(lh logr.Logger, schedProfileName string, podInform
 		}
 
 		cc.NodeHasForeignPods(pod.Spec.NodeName, pod)
-		lh.V(6).Info("detected foreign pods", "logID", logging.PodLogID(pod), "podUID", pod.GetUID(), "node", pod.Spec.NodeName)
+		lh.V(6).Info("detected foreign pods", logging.KeyPod, logging.PodLogID(pod), logging.KeyPodUID, pod.GetUID(), logging.KeyNode, pod.Spec.NodeName)
 	}
 
 	podInformer.AddEventHandler(k8scache.ResourceEventHandlerFuncs{

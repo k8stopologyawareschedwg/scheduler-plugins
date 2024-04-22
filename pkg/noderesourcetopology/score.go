@@ -59,7 +59,7 @@ func (rw resourceToWeightMap) weight(r v1.ResourceName) int64 {
 }
 
 func (tm *TopologyMatch) Score(ctx context.Context, state *framework.CycleState, pod *v1.Pod, nodeName string) (int64, *framework.Status) {
-	lh := logging.Log().WithValues(logging.KeyLogID, logging.PodLogID(pod), logging.KeyPodUID, pod.GetUID(), logging.KeyNode, nodeName, logging.KeyFlow, logging.FlowScore)
+	lh := logging.Log().WithValues(logging.KeyPod, logging.PodLogID(pod), logging.KeyPodUID, pod.GetUID(), logging.KeyNode, nodeName, logging.KeyFlow, logging.FlowScore)
 	lh.V(4).Info(logging.FlowBegin)
 	defer lh.V(4).Info(logging.FlowEnd)
 
