@@ -91,7 +91,7 @@ func newResourceStore(lh logr.Logger) *resourceStore {
 func (rs *resourceStore) String() string {
 	var sb strings.Builder
 	for podKey, podRes := range rs.data {
-		sb.WriteString("  " + podKey + ": " + stringify.ResourceList(podRes) + "\n")
+		sb.WriteString(podKey + "::[" + stringify.ResourceList(podRes) + "];")
 	}
 	return sb.String()
 }
