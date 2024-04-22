@@ -135,7 +135,7 @@ func podScopeScore(lh logr.Logger, pod *v1.Pod, zones topologyv1alpha2.ZoneList,
 
 	allocatablePerNUMA := createNUMANodeList(lh, zones)
 	finalScore := scoreForEachNUMANode(lh, resources, allocatablePerNUMA, scorerFn, resourceToWeightMap)
-	lh.V(5).Info("pod scope scoring final node score", "finalScore", finalScore)
+	lh.V(2).Info("pod scope scoring final node score", "finalScore", finalScore)
 	return finalScore, nil
 }
 
@@ -151,7 +151,7 @@ func containerScopeScore(lh logr.Logger, pod *v1.Pod, zones topologyv1alpha2.Zon
 		lh.V(6).Info("container scope scoring", "container", container.Name, "score", contScore[i])
 	}
 	finalScore := int64(stat.Mean(contScore, nil))
-	lh.V(5).Info("container scope scoring final node score", "finalScore", finalScore)
+	lh.V(2).Info("container scope scoring final node score", "finalScore", finalScore)
 	return finalScore, nil
 }
 
