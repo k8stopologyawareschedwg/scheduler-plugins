@@ -80,6 +80,7 @@ func singleNUMAContainerLevelHandler(lh logr.Logger, pod *v1.Pod, zones topology
 		// this is necessary, so we won't allocate the same resources for the upcoming containers
 		subtractFromNUMA(lh, nodes, numaID, container)
 	}
+	lh.V(2).Info("can align all containers")
 	return nil
 }
 
@@ -105,7 +106,7 @@ func resourcesAvailableInAnyNUMANodes(lh logr.Logger, numaNodes NUMANodeList, re
 			// some resources may not expose NUMA affinity (device plugins, extended resources), but all resources
 			// must be reported at node level; thus, if they are not present at node level, we can safely assume
 			// we don't have the resource at all.
-			lh.V(5).Info("early verdict: cannot meet request", "resource", resource, "suitable", "false")
+			lh.V(2).Info("early verdict: cannot meet request", "resource", resource, "suitable", "false")
 			return numaID, false
 		}
 
@@ -137,7 +138,7 @@ func resourcesAvailableInAnyNUMANodes(lh logr.Logger, numaNodes NUMANodeList, re
 
 		bitmask.And(resourceBitmask)
 		if bitmask.IsEmpty() {
-			lh.V(5).Info("early verdict", "resource", resource, "suitable", "false")
+			lh.V(2).Info("early verdict", "resource", resource, "suitable", "false")
 			return numaID, false
 		}
 	}
@@ -149,7 +150,7 @@ func resourcesAvailableInAnyNUMANodes(lh logr.Logger, numaNodes NUMANodeList, re
 
 	// at least one NUMA node is available
 	ret := !bitmask.IsEmpty()
-	lh.V(5).Info("final verdict", "suitable", ret)
+	lh.V(2).Info("final verdict", "suitable", ret)
 	return numaID, ret
 }
 
@@ -187,6 +188,7 @@ func singleNUMAPodLevelHandler(lh logr.Logger, pod *v1.Pod, zones topologyv1alph
 		lh.V(2).Info("cannot align pod", "name", pod.Name)
 		return framework.NewStatus(framework.Unschedulable, "cannot align pod")
 	}
+	lh.V(2).Info("can align pod")
 	return nil
 }
 

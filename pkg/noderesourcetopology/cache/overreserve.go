@@ -68,7 +68,7 @@ func NewOverReserve(lh logr.Logger, cfg *apiconfig.NodeResourceTopologyCache, cl
 		return nil, err
 	}
 
-	lh.V(3).Info("initializing", "noderesourcetopologies", len(nrtObjs.Items), "method", resyncMethod)
+	lh.V(2).Info("initializing", "noderesourcetopologies", len(nrtObjs.Items), "method", resyncMethod)
 	obj := &OverReserve{
 		lh:                     lh,
 		client:                 client,
@@ -125,7 +125,7 @@ func (ov *OverReserve) NodeHasForeignPods(nodeName string, pod *corev1.Pod) {
 		return
 	}
 	val := ov.nodesWithForeignPods.Incr(nodeName)
-	lh.V(4).Info("marked with foreign pods", "count", val)
+	lh.V(2).Info("marked with foreign pods", "count", val)
 }
 
 func (ov *OverReserve) ReserveNodeResources(nodeName string, pod *corev1.Pod) {
@@ -274,7 +274,7 @@ func (ov *OverReserve) FlushNodes(lh logr.Logger, nrts ...*topologyv1alpha2.Node
 	ov.lock.Lock()
 	defer ov.lock.Unlock()
 	for _, nrt := range nrts {
-		lh.V(4).Info("flushing", "node", nrt.Name)
+		lh.V(2).Info("flushing", "node", nrt.Name)
 		ov.nrts.Update(nrt)
 		delete(ov.assumedResources, nrt.Name)
 		ov.nodesMaybeOverreserved.Delete(nrt.Name)
