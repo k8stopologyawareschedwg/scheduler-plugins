@@ -103,7 +103,7 @@ func (ov *OverReserve) GetCachedNRTCopy(ctx context.Context, nodeName string, po
 	lh := ov.lh.WithValues("logID", logID, "podUID", pod.GetUID(), "node", nodeName)
 
 	lh.V(6).Info("NRT", "fromcache", stringify.NodeResourceTopologyResources(nrt))
-	nodeAssumedResources.UpdateNRT(logID, nrt)
+	nodeAssumedResources.UpdateNRT(nrt, "logID", logID)
 
 	lh.V(5).Info("NRT", "withassumed", stringify.NodeResourceTopologyResources(nrt))
 	return nrt, true

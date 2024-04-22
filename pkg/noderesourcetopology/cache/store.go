@@ -125,7 +125,7 @@ func (rs *resourceStore) DeletePod(pod *corev1.Pod) bool {
 
 // UpdateNRT updates the provided Node Resource Topology object with the resources tracked in this store,
 // performing pessimistic overallocation across all the NUMA zones.
-func (rs *resourceStore) UpdateNRT(logID string, nrt *topologyv1alpha2.NodeResourceTopology) {
+func (rs *resourceStore) UpdateNRT(nrt *topologyv1alpha2.NodeResourceTopology, logKeysAndValues ...any) {
 	for key, res := range rs.data {
 		// We cannot predict on which Zone the workload will be placed.
 		// And we should totally not guess. So the only safe (and conservative)
@@ -146,7 +146,8 @@ func (rs *resourceStore) UpdateNRT(logID string, nrt *topologyv1alpha2.NodeResou
 				if zr.Available.Cmp(qty) < 0 {
 					// this should happen rarely, and it is likely caused by
 					// a bug elsewhere.
-					rs.lh.V(3).Info("cannot decrement resource", "logID", logID, "zone", zr.Name, "node", nrt.Name, "available", zr.Available, "requestor", key, "quantity", qty.String())
+					logKeysAndValues = append(logKeysAndValues, "zone", zr.Name, "node", nrt.Name, "available", zr.Available, "requestor", key, "quantity", qty.String())
+					rs.lh.V(3).Info("cannot decrement resource", logKeysAndValues...)
 					zr.Available = resource.Quantity{}
 					continue
 				}
