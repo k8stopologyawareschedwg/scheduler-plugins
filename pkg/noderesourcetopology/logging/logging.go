@@ -17,12 +17,14 @@ limitations under the License.
 package logging
 
 import (
+	"context"
 	"fmt"
 	"time"
 
 	"github.com/go-logr/logr"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/klog/v2"
 )
 
 // before to replace with FromContext(), at least in filter and score,
@@ -58,14 +60,51 @@ const (
 	FlowUnreserve string = "unreserve"
 )
 
-var logh logr.Logger
+// we would like to inject loggers in the scheduler-framework-managed
+// context. Best would be one per-stage (e.g. filter, score...) but
+// one per-plugin (e.g. NodeResourceFit, NodeResourceTopology...) works
+// as well. Till this is possible, we reserve the option to optionally
+// override the context-provided logger. This is why we also have
+// out own FromContext instead of a smaller helper.
+var logHandler logr.Logger
+var logOverridden bool
 
-func SetLogger(lh logr.Logger) {
-	logh = lh
+func init() {
+	logHandler = klog.Background()
+	logOverridden = false
 }
 
-func Log() logr.Logger {
-	return logh
+// Setup must be called once before the plugin code is executed
+func Setup(lh logr.Logger) {
+	logHandler = lh
+	logOverridden = true
+}
+
+func FromContext(ctx context.Context, pod *corev1.Pod, nodeName, flowName string) logr.Logger {
+	var lh logr.Logger
+	if logOverridden {
+		lh = logHandler
+		// consistency with what scheduler framework does.
+		if lh.V(4).Enabled() {
+			if nodeName != "" {
+				lh = lh.WithName(flowName)
+			}
+			if flowName != "" {
+				lh = lh.WithValues("node", nodeName)
+			}
+		}
+	} else {
+		lh = klog.FromContext(ctx)
+		// and we intentionally fully trust the provided logger about extra values,
+		// typically node(Name) being processed and flow name (using WithName).
+		// this is because we prefer to avoid awkward duplication of name and flow,
+		// klog doesn't give us a facility to deduplicate these values.
+	}
+	// these are infos we always want, if available, even regardless the V level
+	if pod == nil {
+		return lh
+	}
+	return lh.WithValues(KeyPod, PodLogID(pod), KeyPodUID, pod.GetUID())
 }
 
 func PodLogID(pod *corev1.Pod) string {

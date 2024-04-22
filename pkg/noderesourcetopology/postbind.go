@@ -25,7 +25,7 @@ import (
 )
 
 func (tm *TopologyMatch) PostBind(ctx context.Context, state *framework.CycleState, pod *corev1.Pod, nodeName string) {
-	lh := logging.Log().WithValues(logging.KeyPod, logging.PodLogID(pod), logging.KeyPodUID, pod.GetUID(), logging.KeyNode, nodeName, logging.KeyFlow, logging.FlowPostBind)
+	lh := logging.FromContext(ctx, pod, nodeName, logging.FlowPostBind)
 	lh.V(4).Info(logging.FlowBegin)
 	defer lh.V(4).Info(logging.FlowEnd)
 

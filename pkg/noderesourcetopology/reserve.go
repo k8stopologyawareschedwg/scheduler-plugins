@@ -25,7 +25,7 @@ import (
 )
 
 func (tm *TopologyMatch) Reserve(ctx context.Context, state *framework.CycleState, pod *corev1.Pod, nodeName string) *framework.Status {
-	lh := logging.Log().WithValues(logging.KeyPod, logging.PodLogID(pod), logging.KeyPodUID, pod.GetUID(), logging.KeyNode, nodeName, logging.KeyFlow, logging.FlowReserve)
+	lh := logging.FromContext(ctx, pod, nodeName, logging.FlowReserve)
 	lh.V(4).Info(logging.FlowBegin)
 	defer lh.V(4).Info(logging.FlowEnd)
 
@@ -35,7 +35,7 @@ func (tm *TopologyMatch) Reserve(ctx context.Context, state *framework.CycleStat
 }
 
 func (tm *TopologyMatch) Unreserve(ctx context.Context, state *framework.CycleState, pod *corev1.Pod, nodeName string) {
-	lh := logging.Log().WithValues(logging.KeyPod, logging.PodLogID(pod), logging.KeyPodUID, pod.GetUID(), logging.KeyNode, nodeName, logging.KeyFlow, logging.FlowUnreserve)
+	lh := logging.FromContext(ctx, pod, nodeName, logging.FlowUnreserve)
 	lh.V(4).Info(logging.FlowBegin)
 	defer lh.V(4).Info(logging.FlowEnd)
 
