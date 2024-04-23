@@ -33,6 +33,7 @@ func RegisterDefaults(scheme *runtime.Scheme) error {
 	scheme.AddTypeDefaultingFunc(&LoadVariationRiskBalancingArgs{}, func(obj interface{}) {
 		SetObjectDefaults_LoadVariationRiskBalancingArgs(obj.(*LoadVariationRiskBalancingArgs))
 	})
+	scheme.AddTypeDefaultingFunc(&LowRiskOverCommitmentArgs{}, func(obj interface{}) { SetObjectDefaults_LowRiskOverCommitmentArgs(obj.(*LowRiskOverCommitmentArgs)) })
 	scheme.AddTypeDefaultingFunc(&NetworkOverheadArgs{}, func(obj interface{}) { SetObjectDefaults_NetworkOverheadArgs(obj.(*NetworkOverheadArgs)) })
 	scheme.AddTypeDefaultingFunc(&NodeResourceTopologyMatchArgs{}, func(obj interface{}) {
 		SetObjectDefaults_NodeResourceTopologyMatchArgs(obj.(*NodeResourceTopologyMatchArgs))
@@ -41,6 +42,7 @@ func RegisterDefaults(scheme *runtime.Scheme) error {
 		SetObjectDefaults_NodeResourcesAllocatableArgs(obj.(*NodeResourcesAllocatableArgs))
 	})
 	scheme.AddTypeDefaultingFunc(&PreemptionTolerationArgs{}, func(obj interface{}) { SetObjectDefaults_PreemptionTolerationArgs(obj.(*PreemptionTolerationArgs)) })
+	scheme.AddTypeDefaultingFunc(&SySchedArgs{}, func(obj interface{}) { SetObjectDefaults_SySchedArgs(obj.(*SySchedArgs)) })
 	scheme.AddTypeDefaultingFunc(&TargetLoadPackingArgs{}, func(obj interface{}) { SetObjectDefaults_TargetLoadPackingArgs(obj.(*TargetLoadPackingArgs)) })
 	scheme.AddTypeDefaultingFunc(&TopologicalSortArgs{}, func(obj interface{}) { SetObjectDefaults_TopologicalSortArgs(obj.(*TopologicalSortArgs)) })
 	return nil
@@ -52,6 +54,10 @@ func SetObjectDefaults_CoschedulingArgs(in *CoschedulingArgs) {
 
 func SetObjectDefaults_LoadVariationRiskBalancingArgs(in *LoadVariationRiskBalancingArgs) {
 	SetDefaults_LoadVariationRiskBalancingArgs(in)
+}
+
+func SetObjectDefaults_LowRiskOverCommitmentArgs(in *LowRiskOverCommitmentArgs) {
+	SetDefaults_LowRiskOverCommitmentArgs(in)
 }
 
 func SetObjectDefaults_NetworkOverheadArgs(in *NetworkOverheadArgs) {
@@ -68,6 +74,10 @@ func SetObjectDefaults_NodeResourcesAllocatableArgs(in *NodeResourcesAllocatable
 
 func SetObjectDefaults_PreemptionTolerationArgs(in *PreemptionTolerationArgs) {
 	SetDefaults_PreemptionTolerationArgs(in)
+}
+
+func SetObjectDefaults_SySchedArgs(in *SySchedArgs) {
+	SetDefaults_SySchedArgs(in)
 }
 
 func SetObjectDefaults_TargetLoadPackingArgs(in *TargetLoadPackingArgs) {

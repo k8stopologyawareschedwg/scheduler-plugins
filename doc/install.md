@@ -4,7 +4,7 @@
 
 <!-- toc -->
 - [Create a Kubernetes Cluster](#create-a-kubernetes-cluster)
-- [Install release v0.25.7 and use Coscheduling](#install-release-v0257-and-use-coscheduling)
+- [Install release v0.28.9 and use Coscheduling](#install-release-v0289-and-use-coscheduling)
   - [As a second scheduler](#as-a-second-scheduler)
   - [As a single scheduler (replacing the vanilla default-scheduler)](#as-a-single-scheduler-replacing-the-vanilla-default-scheduler)
 - [Test Coscheduling](#test-coscheduling)
@@ -20,11 +20,11 @@ The Kubernetes version must equal to or greater than **v1.23.0**. To check the v
 
 If you do not have a cluster yet, create one by using one of the following provision tools:
 
-* [kind](https://kind.sigs.k8s.io/docs/)
-* [kubeadm](https://kubernetes.io/docs/admin/kubeadm/)
+* [kind](https://kind.sigs.k8s.io/)
+* [kubeadm](https://kubernetes.io/docs/reference/setup-tools/kubeadm/)
 * [minikube](https://minikube.sigs.k8s.io/)
 
-## Install release v0.25.7 and use Coscheduling
+## Install release v0.28.9 and use Coscheduling
 
 Note: we provide two ways to install the scheduler-plugin artifacts: as a second scheduler
 and as a single scheduler. Their pros and cons are as below:
@@ -80,7 +80,7 @@ any vanilla Kubernetes scheduling capability. Instead, a lot of extra out-of-box
 1. Create `/etc/kubernetes/sched-cc.yaml`
 
     ```yaml
-    apiVersion: kubescheduler.config.k8s.io/v1beta3
+    apiVersion: kubescheduler.config.k8s.io/v1
     kind: KubeSchedulerConfiguration
     leaderElection:
       # (Optional) Change true to false if you are not running a HA control-plane.
@@ -141,33 +141,33 @@ any vanilla Kubernetes scheduling capability. Instead, a lot of extra out-of-box
     
     ```diff
     16d15
-    <     - --config=/etc/kubernetes/sched-cc.yaml
+    +     - --config=/etc/kubernetes/sched-cc.yaml
     17a17,18
-    >     - --kubeconfig=/etc/kubernetes/scheduler.conf
-    >     - --leader-elect=true
+    -     - --kubeconfig=/etc/kubernetes/scheduler.conf
+    -     - --leader-elect=true
     19,20c20
-    <     image: registry.k8s.io/scheduler-plugins/kube-scheduler:v0.25.7
+    +     image: registry.k8s.io/scheduler-plugins/kube-scheduler:v0.28.9
     ---
-    >     image: registry.k8s.io/kube-scheduler:v1.25.7
+    -     image: registry.k8s.io/kube-scheduler:v1.28.9
     50,52d49
-    <     - mountPath: /etc/kubernetes/sched-cc.yaml
-    <       name: sched-cc
-    <       readOnly: true
+    +     - mountPath: /etc/kubernetes/sched-cc.yaml
+    +       name: sched-cc
+    +       readOnly: true
     60,63d56
-    <   - hostPath:
-    <       path: /etc/kubernetes/sched-cc.yaml
-    <       type: FileOrCreate
-    <     name: sched-cc
+    +   - hostPath:
+    +       path: /etc/kubernetes/sched-cc.yaml
+    +       type: FileOrCreate
+    +     name: sched-cc
     ```
    
-1. Verify that kube-scheduler pod is running properly with a correct image: `registry.k8s.io/scheduler-plugins/kube-scheduler:v0.25.7`
+1. Verify that kube-scheduler pod is running properly with a correct image: `registry.k8s.io/scheduler-plugins/kube-scheduler:v0.28.9`
 
     ```bash
     $ kubectl get pod -n kube-system | grep kube-scheduler
     kube-scheduler-kind-control-plane            1/1     Running   0          3m27s
  
     $ kubectl get pods -l component=kube-scheduler -n kube-system -o=jsonpath="{.items[0].spec.containers[0].image}{'\n'}"
-    registry.k8s.io/scheduler-plugins/kube-scheduler:v0.25.7
+    registry.k8s.io/scheduler-plugins/kube-scheduler:v0.28.9
     ```
    
     > **⚠️Troubleshooting:** If the kube-scheudler is not up, you may need to restart kubelet service inside the kind control plane (`systemctl restart kubelet.service`)
@@ -233,7 +233,7 @@ Now, we're able to verify how the coscheduling plugin works.
 1. As PodGroup `pg1` requires at least 3 pods to be scheduled all-together, and there are only 2 Pods
    so far, so it's expected to observer they are pending:
 
-    All nginx pods are expected to be `Pending` as they cannot be co-scheduled altogether.
+    All pods are expected to be `Pending` as they cannot be co-scheduled altogether.
 
     ```bash
     $ kubectl get pod

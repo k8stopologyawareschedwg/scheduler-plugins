@@ -17,18 +17,22 @@ limitations under the License.
 package topologicalsort
 
 import (
+	"context"
 	"fmt"
 
 	"k8s.io/apimachinery/pkg/runtime"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/klog/v2"
 	"k8s.io/kubernetes/pkg/scheduler/framework"
 	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/queuesort"
+
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	pluginconfig "sigs.k8s.io/scheduler-plugins/apis/config"
 	networkawareutil "sigs.k8s.io/scheduler-plugins/pkg/networkaware/util"
 
 	agv1alpha "github.com/diktyo-io/appgroup-api/pkg/apis/appgroup/v1alpha1"
-	aglisters "github.com/diktyo-io/appgroup-api/pkg/generated/listers/appgroup/v1alpha1"
 )
 
 const (
@@ -36,10 +40,17 @@ const (
 	Name = "TopologicalSort"
 )
 
+var scheme = runtime.NewScheme()
+
+func init() {
+	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
+	utilruntime.Must(agv1alpha.AddToScheme(scheme))
+}
+
 // TopologicalSort : Sort pods based on their AppGroup and corresponding microservice dependencies
 type TopologicalSort struct {
+	client.Client
 	handle     framework.Handle
-	agLister   aglisters.AppGroupLister
 	namespaces []string
 }
 
@@ -61,7 +72,7 @@ func getArgs(obj runtime.Object) (*pluginconfig.TopologicalSortArgs, error) {
 }
 
 // New : create an instance of a TopologicalSort plugin
-func New(obj runtime.Object, handle framework.Handle) (framework.Plugin, error) {
+func New(_ context.Context, obj runtime.Object, handle framework.Handle) (framework.Plugin, error) {
 	klog.V(4).InfoS("Creating new instance of the TopologicalSort plugin")
 
 	args, err := getArgs(obj)
@@ -69,14 +80,16 @@ func New(obj runtime.Object, handle framework.Handle) (framework.Plugin, error) 
 		return nil, err
 	}
 
-	agLister, err := networkawareutil.InitAppGroupInformer(handle.KubeConfig())
+	client, err := client.New(handle.KubeConfig(), client.Options{
+		Scheme: scheme,
+	})
 	if err != nil {
 		return nil, err
 	}
 
 	pl := &TopologicalSort{
+		Client:     client,
 		handle:     handle,
-		agLister:   agLister,
 		namespaces: args.Namespaces,
 	}
 	return pl, nil
@@ -118,9 +131,13 @@ func (ts *TopologicalSort) Less(pInfo1, pInfo2 *framework.QueuedPodInfo) bool {
 func (ts *TopologicalSort) findAppGroupTopologicalSort(agName string) *agv1alpha.AppGroup {
 	klog.V(6).InfoS("namespaces: %s", ts.namespaces)
 	for _, namespace := range ts.namespaces {
-		klog.V(6).InfoS("appGroup CR", "namespace", namespace, "ag.lister", ts.agLister)
+		klog.V(6).InfoS("appGroup CR", "namespace", namespace, "name", agName)
 		// AppGroup couldn't be placed in several namespaces simultaneously
-		appGroup, err := ts.agLister.AppGroups(namespace).Get(agName)
+		appGroup := &agv1alpha.AppGroup{}
+		err := ts.Get(context.TODO(), client.ObjectKey{
+			Namespace: namespace,
+			Name:      agName,
+		}, appGroup)
 		if err != nil {
 			klog.V(4).InfoS("Cannot get AppGroup from AppGroupNamespaceLister:", "error", err)
 			continue

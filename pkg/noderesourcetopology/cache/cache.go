@@ -17,6 +17,8 @@ limitations under the License.
 package cache
 
 import (
+	"context"
+
 	corev1 "k8s.io/api/core/v1"
 
 	topologyv1alpha2 "github.com/k8stopologyawareschedwg/noderesourcetopology-api/pkg/apis/topology/v1alpha2"
@@ -28,9 +30,11 @@ type Interface interface {
 	// Over-reserved resources are the resources consumed by pods scheduled to that node after the last update
 	// of NRT pertaining to the same node, pessimistically overallocated on ALL the NUMA zones of the node.
 	// The pod argument is used only for logging purposes.
-	// Returns a boolean to signal the caller if the NRT data is clean. If false, then the node has foreign
-	// Pods detected - so it should be ignored or handled differently by the caller.
-	GetCachedNRTCopy(nodeName string, pod *corev1.Pod) (*topologyv1alpha2.NodeResourceTopology, bool)
+	// Returns nil if there is no NRT data available for the node named `nodeName`.
+	// Returns a boolean to signal the caller if the NRT data is fresh.
+	// If true, the data is fresh and ready to be consumed.
+	// If false, the data is stale and the caller need to wait for a future refresh.
+	GetCachedNRTCopy(ctx context.Context, nodeName string, pod *corev1.Pod) (*topologyv1alpha2.NodeResourceTopology, bool)
 
 	// NodeMaybeOverReserved declares a node was filtered out for not enough resources available.
 	// This means this node is eligible for a resync. When a node is marked discarded (dirty), it matters not
@@ -56,4 +60,10 @@ type Interface interface {
 
 	// UnreserveNodeResources decrement from the node assumed resources the resources required by the given pod.
 	UnreserveNodeResources(nodeName string, pod *corev1.Pod)
+
+	// PostBind is called after a pod is successfully bound. These plugins are
+	// informational. A common application of this extension point is for cleaning
+	// up. If a plugin needs to clean-up its state after a pod is scheduled and
+	// bound, PostBind is the extension point that it should register.
+	PostBind(nodeName string, pod *corev1.Pod)
 }

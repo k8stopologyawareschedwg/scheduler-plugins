@@ -24,7 +24,6 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
@@ -34,10 +33,9 @@ import (
 
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/source"
-
 	schedv1alpha1 "sigs.k8s.io/scheduler-plugins/apis/scheduling/v1alpha1"
 	"sigs.k8s.io/scheduler-plugins/pkg/util"
 )
@@ -48,7 +46,8 @@ type PodGroupReconciler struct {
 	recorder record.EventRecorder
 
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme  *runtime.Scheme
+	Workers int
 }
 
 // +kubebuilder:rbac:groups=scheduling.x-k8s.io,resources=podgroups,verbs=get;list;watch;create;update;patch;delete
@@ -83,14 +82,14 @@ func (r *PodGroupReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	}
 	// If startScheduleTime - createTime > 2days,
 	// do not reconcile again because pod may have been GCed
-	if pg.Status.Scheduled == pg.Spec.MinMember && pg.Status.Running == 0 &&
+	if (pg.Status.Phase == schedv1alpha1.PodGroupScheduling || pg.Status.Phase == schedv1alpha1.PodGroupPending) && pg.Status.Running == 0 &&
 		pg.Status.ScheduleStartTime.Sub(pg.CreationTimestamp.Time) > 48*time.Hour {
 		r.recorder.Event(pg, v1.EventTypeWarning,
 			"Timeout", "schedule time longer than 48 hours")
 		return ctrl.Result{}, nil
 	}
 
-	podList := &corev1.PodList{}
+	podList := &v1.PodList{}
 	if err := r.List(ctx, podList,
 		client.MatchingLabelsSelector{
 			Selector: labels.Set(map[string]string{
@@ -107,24 +106,21 @@ func (r *PodGroupReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		pgCopy.Status.Phase = schedv1alpha1.PodGroupPending
 	case schedv1alpha1.PodGroupPending:
 		if len(pods) >= int(pg.Spec.MinMember) {
-			pgCopy.Status.Phase = schedv1alpha1.PodGroupPreScheduling
+			pgCopy.Status.Phase = schedv1alpha1.PodGroupScheduling
 			fillOccupiedObj(pgCopy, &pods[0])
 		}
 	default:
 		pgCopy.Status.Running, pgCopy.Status.Succeeded, pgCopy.Status.Failed = getCurrentPodStats(pods)
-
-		if len(pods) == 0 {
+		if len(pods) < int(pg.Spec.MinMember) {
 			pgCopy.Status.Phase = schedv1alpha1.PodGroupPending
 			break
 		}
 
-		if pgCopy.Status.Scheduled >= pgCopy.Spec.MinMember &&
-			pgCopy.Status.Phase == schedv1alpha1.PodGroupScheduling {
-			pgCopy.Status.Phase = schedv1alpha1.PodGroupScheduled
+		if pgCopy.Status.Succeeded+pgCopy.Status.Running < pg.Spec.MinMember {
+			pgCopy.Status.Phase = schedv1alpha1.PodGroupScheduling
 		}
 
-		if pgCopy.Status.Succeeded+pgCopy.Status.Running >= pg.Spec.MinMember &&
-			pgCopy.Status.Phase == schedv1alpha1.PodGroupScheduled {
+		if pgCopy.Status.Succeeded+pgCopy.Status.Running >= pg.Spec.MinMember {
 			pgCopy.Status.Phase = schedv1alpha1.PodGroupRunning
 		}
 		// Final state of pod group
@@ -172,7 +168,7 @@ func getCurrentPodStats(pods []v1.Pod) (int32, int32, int32) {
 	return running, succeeded, failed
 }
 
-func fillOccupiedObj(pg *schedv1alpha1.PodGroup, pod *corev1.Pod) {
+func fillOccupiedObj(pg *schedv1alpha1.PodGroup, pod *v1.Pod) {
 	if len(pod.OwnerReferences) == 0 {
 		return
 	}
@@ -193,14 +189,14 @@ func (r *PodGroupReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	r.log = mgr.GetLogger()
 
 	return ctrl.NewControllerManagedBy(mgr).
-		Watches(&source.Kind{Type: &corev1.Pod{}},
-			handler.EnqueueRequestsFromMapFunc(r.podToPodGroup)).
+		Watches(&v1.Pod{}, handler.EnqueueRequestsFromMapFunc(r.podToPodGroup)).
 		For(&schedv1alpha1.PodGroup{}).
+		WithOptions(controller.Options{MaxConcurrentReconciles: r.Workers}).
 		Complete(r)
 }
 
-func (r *PodGroupReconciler) podToPodGroup(obj client.Object) []ctrl.Request {
-	pod, ok := obj.(*corev1.Pod)
+func (r *PodGroupReconciler) podToPodGroup(ctx context.Context, obj client.Object) []ctrl.Request {
+	pod, ok := obj.(*v1.Pod)
 	if !ok {
 		return nil
 	}

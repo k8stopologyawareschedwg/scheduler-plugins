@@ -37,9 +37,10 @@ import (
 	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/queuesort"
 	"k8s.io/kubernetes/pkg/scheduler/framework/runtime"
 	st "k8s.io/kubernetes/pkg/scheduler/testing"
+	tf "k8s.io/kubernetes/pkg/scheduler/testing/framework"
 
 	pluginConfig "sigs.k8s.io/scheduler-plugins/apis/config"
-	"sigs.k8s.io/scheduler-plugins/apis/config/v1beta2"
+	cfgv1 "sigs.k8s.io/scheduler-plugins/apis/config/v1"
 	testutil "sigs.k8s.io/scheduler-plugins/test/util"
 )
 
@@ -84,29 +85,32 @@ func TestNew(t *testing.T) {
 	}))
 	defer server.Close()
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	loadVariationRiskBalancingArgs := pluginConfig.LoadVariationRiskBalancingArgs{
 		TrimaranSpec:            pluginConfig.TrimaranSpec{WatcherAddress: server.URL},
-		SafeVarianceMargin:      v1beta2.DefaultSafeVarianceMargin,
-		SafeVarianceSensitivity: v1beta2.DefaultSafeVarianceSensitivity,
+		SafeVarianceMargin:      cfgv1.DefaultSafeVarianceMargin,
+		SafeVarianceSensitivity: cfgv1.DefaultSafeVarianceSensitivity,
 	}
 	loadVariationRiskBalancingConfig := config.PluginConfig{
 		Name: Name,
 		Args: &loadVariationRiskBalancingArgs,
 	}
-	registeredPlugins := []st.RegisterPluginFunc{
-		st.RegisterBindPlugin(defaultbinder.Name, defaultbinder.New),
-		st.RegisterQueueSortPlugin(queuesort.Name, queuesort.New),
-		st.RegisterScorePlugin(Name, New, 1),
+	registeredPlugins := []tf.RegisterPluginFunc{
+		tf.RegisterBindPlugin(defaultbinder.Name, defaultbinder.New),
+		tf.RegisterQueueSortPlugin(queuesort.Name, queuesort.New),
+		tf.RegisterScorePlugin(Name, New, 1),
 	}
 
 	cs := testClientSet.NewSimpleClientset()
 	informerFactory := informers.NewSharedInformerFactory(cs, 0)
 	snapshot := newTestSharedLister(nil, nil)
-	fh, err := testutil.NewFramework(registeredPlugins, []config.PluginConfig{loadVariationRiskBalancingConfig},
+	fh, err := testutil.NewFramework(ctx, registeredPlugins, []config.PluginConfig{loadVariationRiskBalancingConfig},
 		"default-scheduler", runtime.WithClientSet(cs),
 		runtime.WithInformerFactory(informerFactory), runtime.WithSnapshotSharedLister(snapshot))
 	assert.Nil(t, err)
-	p, err := New(&loadVariationRiskBalancingArgs, fh)
+	p, err := New(ctx, &loadVariationRiskBalancingArgs, fh)
 	assert.NotNil(t, p)
 	assert.Nil(t, err)
 
@@ -115,12 +119,12 @@ func TestNew(t *testing.T) {
 		TrimaranSpec:       pluginConfig.TrimaranSpec{WatcherAddress: server.URL},
 		SafeVarianceMargin: -5,
 	}
-	badp, err := New(&badArgs, fh)
+	badp, err := New(ctx, &badArgs, fh)
 	assert.NotNil(t, badp)
 	assert.Nil(t, err)
 
 	badArgs.SafeVarianceSensitivity = -1
-	badp, err = New(&badArgs, fh)
+	badp, err = New(ctx, &badArgs, fh)
 	assert.NotNil(t, badp)
 	assert.Nil(t, err)
 }
@@ -320,9 +324,9 @@ func TestScore(t *testing.T) {
 		},
 	}
 
-	registeredPlugins := []st.RegisterPluginFunc{
-		st.RegisterBindPlugin(defaultbinder.Name, defaultbinder.New),
-		st.RegisterQueueSortPlugin(queuesort.Name, queuesort.New),
+	registeredPlugins := []tf.RegisterPluginFunc{
+		tf.RegisterBindPlugin(defaultbinder.Name, defaultbinder.New),
+		tf.RegisterQueueSortPlugin(queuesort.Name, queuesort.New),
 	}
 
 	for _, tt := range tests {
@@ -334,13 +338,16 @@ func TestScore(t *testing.T) {
 			}))
 			defer server.Close()
 
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
 			nodes := append([]*v1.Node{}, tt.nodes...)
 			state := framework.NewCycleState()
 
 			loadVariationRiskBalancingArgs := pluginConfig.LoadVariationRiskBalancingArgs{
 				TrimaranSpec:            pluginConfig.TrimaranSpec{WatcherAddress: server.URL},
-				SafeVarianceMargin:      v1beta2.DefaultSafeVarianceMargin,
-				SafeVarianceSensitivity: v1beta2.DefaultSafeVarianceSensitivity,
+				SafeVarianceMargin:      cfgv1.DefaultSafeVarianceMargin,
+				SafeVarianceSensitivity: cfgv1.DefaultSafeVarianceSensitivity,
 			}
 			loadVariationRiskBalancingConfig := config.PluginConfig{
 				Name: Name,
@@ -351,11 +358,11 @@ func TestScore(t *testing.T) {
 			informerFactory := informers.NewSharedInformerFactory(cs, 0)
 			snapshot := newTestSharedLister(nil, nodes)
 
-			fh, err := testutil.NewFramework(registeredPlugins, []config.PluginConfig{loadVariationRiskBalancingConfig},
+			fh, err := testutil.NewFramework(ctx, registeredPlugins, []config.PluginConfig{loadVariationRiskBalancingConfig},
 				"default-scheduler", runtime.WithClientSet(cs),
 				runtime.WithInformerFactory(informerFactory), runtime.WithSnapshotSharedLister(snapshot))
 			assert.Nil(t, err)
-			p, _ := New(&loadVariationRiskBalancingArgs, fh)
+			p, _ := New(ctx, &loadVariationRiskBalancingArgs, fh)
 			scorePlugin := p.(framework.ScorePlugin)
 
 			var actualList framework.NodeScoreList

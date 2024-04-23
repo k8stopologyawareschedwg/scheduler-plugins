@@ -15,11 +15,21 @@ spec:
       labels:
         app: scheduler-plugins-controller
     spec:
-      serviceAccountName: scheduler-plugins-controller
+      serviceAccountName: {{ .Values.controller.name }}
       containers:
       - name: scheduler-plugins-controller
         image: {{ .Values.controller.image }}
         imagePullPolicy: IfNotPresent
+      {{- with .Values.controller.nodeSelector }}
+      nodeSelector: {{- toYaml . | nindent 8}}
+      {{- end }}
+      {{- with .Values.controller.affinity }}
+      affinity: {{- toYaml . | nindent 8}}
+      {{- end }}
+      {{- with .Values.controller.tolerations }}
+      tolerations: {{- toYaml . | nindent 8}}
+      {{- end }}
+
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -38,13 +48,13 @@ spec:
       labels:
         component: scheduler
     spec:
-      serviceAccountName: scheduler-plugins-scheduler
+      serviceAccountName: {{ .Values.scheduler.name }}
       containers:
       - command:
         - /bin/kube-scheduler
         - --config=/etc/kubernetes/scheduler-config.yaml
         image: {{ .Values.scheduler.image }}
-        imagePullPolicy: IfNotPresent        
+        imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
             path: /healthz
@@ -72,3 +82,13 @@ spec:
       - name: scheduler-config
         configMap:
           name: scheduler-config
+      {{- with .Values.scheduler.nodeSelector }}
+      nodeSelector: {{- toYaml . | nindent 8}}
+      {{- end }}
+      {{- with .Values.scheduler.affinity }}
+      affinity: {{- toYaml . | nindent 8}}
+      {{- end }}
+      {{- with .Values.scheduler.tolerations }}
+      tolerations: {{- toYaml . | nindent 8}}
+      {{- end }}
+      
