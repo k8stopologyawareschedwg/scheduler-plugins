@@ -66,13 +66,16 @@ rules:
 - apiGroups: ["scheduling.x-k8s.io"]
   resources: ["podgroups", "elasticquotas", "podgroups/status", "elasticquotas/status"]
   verbs: ["get", "list", "watch", "create", "delete", "update", "patch"]
-# for network-aware plugins add the following lines (scheduler-plugins v.0.25.7)
+# for network-aware plugins add the following lines (scheduler-plugins v0.28.9)
 #- apiGroups: [ "appgroup.diktyo.x-k8s.io" ]
 #  resources: [ "appgroups" ]
 #  verbs: [ "get", "list", "watch", "create", "delete", "update", "patch" ]
 #- apiGroups: [ "networktopology.diktyo.x-k8s.io" ]
 #  resources: [ "networktopologies" ]
 #  verbs: [ "get", "list", "watch", "create", "delete", "update", "patch" ]
+#- apiGroups: ["security-profiles-operator.x-k8s.io"]
+#  resources: ["seccompprofiles", "profilebindings"]
+#  verbs: ["get", "list", "watch", "create", "delete", "update", "patch"]
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
@@ -96,6 +99,9 @@ rules:
   resources: ["pods"]
   verbs: ["get", "list", "watch"]
 - apiGroups: [""]
+  resources: ["events"]
+  verbs: ["create", "patch", "update"]
+- apiGroups: [""]
   resources: ["nodes"]
   verbs: ["get", "list", "watch", "patch"]
 - apiGroups: ["topology.node.k8s.io"]
@@ -105,6 +111,9 @@ rules:
 - apiGroups: ["scheduling.x-k8s.io"]
   resources: ["podgroups", "elasticquotas", "podgroups/status", "elasticquotas/status"]
   verbs: ["get", "list", "watch", "create", "delete", "update", "patch"]
+#- apiGroups: ["security-profiles-operator.x-k8s.io"]
+#  resources: ["seccompprofiles", "profilebindings"]
+#  verbs: ["get", "list", "watch", "create", "delete", "update", "patch"]
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1

@@ -17,28 +17,34 @@ limitations under the License.
 package cache
 
 import (
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/klog/v2"
+	"context"
 
+	"github.com/go-logr/logr"
 	topologyv1alpha2 "github.com/k8stopologyawareschedwg/noderesourcetopology-api/pkg/apis/topology/v1alpha2"
-	listerv1alpha2 "github.com/k8stopologyawareschedwg/noderesourcetopology-api/pkg/generated/listers/topology/v1alpha2"
+
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
+
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type Passthrough struct {
-	lister listerv1alpha2.NodeResourceTopologyLister
+	client ctrlclient.Client
+	lh     logr.Logger
 }
 
-func NewPassthrough(lister listerv1alpha2.NodeResourceTopologyLister) Interface {
+func NewPassthrough(lh logr.Logger, client ctrlclient.Client) Interface {
 	return Passthrough{
-		lister: lister,
+		client: client,
+		lh:     lh,
 	}
 }
 
-func (pt Passthrough) GetCachedNRTCopy(nodeName string, _ *corev1.Pod) (*topologyv1alpha2.NodeResourceTopology, bool) {
-	klog.V(5).InfoS("Lister for nodeResTopoPlugin", "lister", pt.lister)
-	nrt, err := pt.lister.Get(nodeName)
-	if err != nil {
-		klog.V(5).ErrorS(err, "Cannot get NodeTopologies from NodeResourceTopologyLister")
+func (pt Passthrough) GetCachedNRTCopy(ctx context.Context, nodeName string, _ *corev1.Pod) (*topologyv1alpha2.NodeResourceTopology, bool) {
+	pt.lh.V(5).Info("lister for NRT plugin")
+	nrt := &topologyv1alpha2.NodeResourceTopology{}
+	if err := pt.client.Get(ctx, types.NamespacedName{Name: nodeName}, nrt); err != nil {
+		pt.lh.V(5).Error(err, "cannot get nrts from lister")
 		return nil, true
 	}
 	return nrt, true
@@ -48,3 +54,4 @@ func (pt Passthrough) NodeMaybeOverReserved(nodeName string, pod *corev1.Pod)  {
 func (pt Passthrough) NodeHasForeignPods(nodeName string, pod *corev1.Pod)     {}
 func (pt Passthrough) ReserveNodeResources(nodeName string, pod *corev1.Pod)   {}
 func (pt Passthrough) UnreserveNodeResources(nodeName string, pod *corev1.Pod) {}
+func (pt Passthrough) PostBind(nodeName string, pod *corev1.Pod)               {}

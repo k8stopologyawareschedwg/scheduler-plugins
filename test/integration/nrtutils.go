@@ -18,35 +18,38 @@ package integration
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
 	"time"
 
+	topologyv1alpha2 "github.com/k8stopologyawareschedwg/noderesourcetopology-api/pkg/apis/topology/v1alpha2"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/kubernetes"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
 	st "k8s.io/kubernetes/pkg/scheduler/testing"
 
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
+
 	scheconfig "sigs.k8s.io/scheduler-plugins/apis/config"
 	"sigs.k8s.io/scheduler-plugins/pkg/noderesourcetopology"
 	"sigs.k8s.io/scheduler-plugins/pkg/noderesourcetopology/stringify"
-
-	topologyv1alpha2 "github.com/k8stopologyawareschedwg/noderesourcetopology-api/pkg/apis/topology/v1alpha2"
-	"github.com/k8stopologyawareschedwg/noderesourcetopology-api/pkg/generated/clientset/versioned"
 )
 
 const (
 	cpu             = string(corev1.ResourceCPU)
 	memory          = string(corev1.ResourceMemory)
+	gpuResourceName = "vendor/gpu"
 	hugepages2Mi    = "hugepages-2Mi"
 	nicResourceName = "vendor/nic1"
 )
 
-func waitForNRT(cs *kubernetes.Clientset) error {
+func waitForNRT(cs *clientset.Clientset) error {
 	return wait.Poll(100*time.Millisecond, 3*time.Second, func() (done bool, err error) {
 		groupList, _, err := cs.ServerGroupsAndResources()
 		if err != nil {
@@ -90,20 +93,19 @@ func getNodeName(ctx context.Context, c clientset.Interface, podNamespace, podNa
 	return pod.Spec.NodeName, nil
 }
 
-func createNodeResourceTopologies(ctx context.Context, topologyClient *versioned.Clientset, noderesourcetopologies []*topologyv1alpha2.NodeResourceTopology) error {
+func createNodeResourceTopologies(ctx context.Context, client ctrlclient.Client, noderesourcetopologies []*topologyv1alpha2.NodeResourceTopology) error {
 	for _, nrt := range noderesourcetopologies {
-		_, err := topologyClient.TopologyV1alpha2().NodeResourceTopologies().Create(ctx, nrt, metav1.CreateOptions{})
-		if err != nil {
+		if err := client.Create(ctx, nrt.DeepCopy()); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func updateNodeResourceTopologies(ctx context.Context, topologyClient *versioned.Clientset, noderesourcetopologies []*topologyv1alpha2.NodeResourceTopology) error {
+func updateNodeResourceTopologies(ctx context.Context, client ctrlclient.Client, noderesourcetopologies []*topologyv1alpha2.NodeResourceTopology) error {
 	for _, nrt := range noderesourcetopologies {
-		updatedNrt, err := topologyClient.TopologyV1alpha2().NodeResourceTopologies().Get(ctx, nrt.Name, metav1.GetOptions{})
-		if err != nil {
+		updatedNrt := &topologyv1alpha2.NodeResourceTopology{}
+		if err := client.Get(ctx, types.NamespacedName{Name: nrt.Name}, updatedNrt); err != nil {
 			return err
 		}
 
@@ -115,25 +117,25 @@ func updateNodeResourceTopologies(ctx context.Context, topologyClient *versioned
 			obj.Annotations[key] = value
 		}
 
-		obj.TopologyPolicies = nrt.TopologyPolicies // TODO: shallow copy
+		obj.TopologyPolicies = nrt.TopologyPolicies // TODO: Deprecated; shallow copy
+		obj.Attributes = nrt.Attributes.DeepCopy()
 		obj.Zones = nrt.Zones.DeepCopy()
 
-		_, err = topologyClient.TopologyV1alpha2().NodeResourceTopologies().Update(ctx, obj, metav1.UpdateOptions{})
-		if err != nil {
+		if err := client.Update(ctx, obj); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func cleanupNodeResourceTopologies(ctx context.Context, topologyClient *versioned.Clientset, noderesourcetopologies []*topologyv1alpha2.NodeResourceTopology) {
+func cleanupNodeResourceTopologies(ctx context.Context, client ctrlclient.Client, noderesourcetopologies []*topologyv1alpha2.NodeResourceTopology) {
 	for _, nrt := range noderesourcetopologies {
-		err := topologyClient.TopologyV1alpha2().NodeResourceTopologies().Delete(ctx, nrt.Name, metav1.DeleteOptions{})
-		if err != nil {
-			klog.ErrorS(err, "Failed to clean up NodeResourceTopology", "nodeResourceTopology", nrt)
+		if err := client.Delete(ctx, nrt); err != nil {
+			klog.ErrorS(err, "Failed to clean up NodeResourceTopology",
+				"nodeResourceTopology", nrt)
 		}
 	}
-	klog.Infof("init scheduler success")
+	klog.Infof("cleaned up NRT %d objects", len(noderesourcetopologies))
 }
 
 func makeResourceAllocationScoreArgs(strategy *scheconfig.ScoringStrategy) *scheconfig.NodeResourceTopologyMatchArgs {
@@ -170,6 +172,17 @@ func (n *nrtWrapper) Zone(resInfo topologyv1alpha2.ResourceInfoList) *nrtWrapper
 	return n
 }
 
+func (n *nrtWrapper) ZoneWithCosts(resInfo topologyv1alpha2.ResourceInfoList, costs topologyv1alpha2.CostList) *nrtWrapper {
+	z := topologyv1alpha2.Zone{
+		Name:      fmt.Sprintf("node-%d", len(n.nrt.Zones)),
+		Type:      "Node",
+		Resources: resInfo,
+		Costs:     costs,
+	}
+	n.nrt.Zones = append(n.nrt.Zones, z)
+	return n
+}
+
 func (n *nrtWrapper) Annotations(anns map[string]string) *nrtWrapper {
 	if n.nrt.Annotations == nil {
 		n.nrt.Annotations = make(map[string]string)
@@ -189,31 +202,35 @@ func (n *nrtWrapper) Obj() *topologyv1alpha2.NodeResourceTopology {
 	return &n.nrt
 }
 
-func podIsScheduled(interval time.Duration, times int, cs clientset.Interface, podNamespace, podName string) error {
-	return wait.Poll(interval, time.Duration(times)*interval, func() (bool, error) {
-		return podScheduled(cs, podNamespace, podName), nil
+func podIsScheduled(interval time.Duration, times int, cs clientset.Interface, podNamespace, podName string) (*corev1.Pod, error) {
+	var err error
+	var pod *corev1.Pod
+	waitErr := wait.Poll(interval, time.Duration(times)*interval, func() (bool, error) {
+		pod, err = cs.CoreV1().Pods(podNamespace).Get(context.TODO(), podName, metav1.GetOptions{})
+		if err != nil {
+			// This could be a connection error so we want to retry.
+			klog.ErrorS(err, "Failed to get pod", "pod", klog.KRef(podNamespace, podName))
+			return false, err
+		}
+		return pod.Spec.NodeName != "", nil
 	})
+	return pod, waitErr
 }
 
-func podIsPending(interval time.Duration, times int, cs clientset.Interface, podNamespace, podName string) error {
+func podIsPending(interval time.Duration, times int, cs clientset.Interface, podNamespace, podName string) (*corev1.Pod, error) {
+	var err error
+	var pod *corev1.Pod
 	for attempt := 0; attempt < times; attempt++ {
-		if !podPending(cs, podNamespace, podName) {
-			return fmt.Errorf("pod %s/%s not pending", podNamespace, podName)
+		pod, err = cs.CoreV1().Pods(podNamespace).Get(context.TODO(), podName, metav1.GetOptions{})
+		if err != nil {
+			return pod, fmt.Errorf("pod %s/%s not pending: %w", podNamespace, podName, err)
+		}
+		if pod.Spec.NodeName != "" {
+			return pod, fmt.Errorf("pod %s/%s not pending: bound to %q", podNamespace, podName, pod.Spec.NodeName)
 		}
 		time.Sleep(interval)
 	}
-	return nil
-}
-
-// podPending returns true if a node is not assigned to the given pod.
-func podPending(c clientset.Interface, podNamespace, podName string) bool {
-	pod, err := c.CoreV1().Pods(podNamespace).Get(context.TODO(), podName, metav1.GetOptions{})
-	if err != nil {
-		// This could be a connection error so we want to retry.
-		klog.ErrorS(err, "Failed to get pod", "pod", klog.KRef(podNamespace, podName))
-		return false
-	}
-	return pod.Spec.NodeName == ""
+	return pod, nil
 }
 
 func accumulateResourcesToCapacity(nrt topologyv1alpha2.NodeResourceTopology) corev1.ResourceList {
@@ -287,4 +304,12 @@ func makeTestFullyAvailableNRTs() []*topologyv1alpha2.NodeResourceTopology {
 					noderesourcetopology.MakeTopologyResInfo(nicResourceName, "2", "2"),
 				}).Obj(),
 	)
+}
+
+func formatObject(obj interface{}) string {
+	bytes, err := json.Marshal(obj)
+	if err != nil {
+		return fmt.Sprintf("<ERROR: %s>", err)
+	}
+	return string(bytes)
 }

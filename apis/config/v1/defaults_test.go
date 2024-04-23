@@ -40,15 +40,18 @@ func TestSchedulingDefaults(t *testing.T) {
 			config: &CoschedulingArgs{},
 			expect: &CoschedulingArgs{
 				PermitWaitingTimeSeconds: pointer.Int64Ptr(60),
+				PodGroupBackoffSeconds:   pointer.Int64Ptr(0),
 			},
 		},
 		{
 			name: "set non default CoschedulingArgs",
 			config: &CoschedulingArgs{
 				PermitWaitingTimeSeconds: pointer.Int64Ptr(60),
+				PodGroupBackoffSeconds:   pointer.Int64Ptr(20),
 			},
 			expect: &CoschedulingArgs{
 				PermitWaitingTimeSeconds: pointer.Int64Ptr(60),
+				PodGroupBackoffSeconds:   pointer.Int64Ptr(20),
 			},
 		},
 		{
@@ -135,12 +138,74 @@ func TestSchedulingDefaults(t *testing.T) {
 			},
 		},
 		{
+			name:   "empty config LowRiskOverCommitmentArgs",
+			config: &LowRiskOverCommitmentArgs{},
+			expect: &LowRiskOverCommitmentArgs{
+				TrimaranSpec: TrimaranSpec{
+					MetricProvider: MetricProviderSpec{
+						Type: "KubernetesMetricsServer",
+					}},
+				SmoothingWindowSize: pointer.Int64Ptr(5),
+				RiskLimitWeights: map[v1.ResourceName]float64{
+					v1.ResourceCPU:    0.5,
+					v1.ResourceMemory: 0.5,
+				},
+			},
+		},
+		{
+			name: "set non default LowRiskOverCommitmentArgs",
+			config: &LowRiskOverCommitmentArgs{
+				SmoothingWindowSize: pointer.Int64Ptr(10),
+				RiskLimitWeights: map[v1.ResourceName]float64{
+					v1.ResourceCPU:    0.2,
+					v1.ResourceMemory: 0.8,
+				},
+			},
+			expect: &LowRiskOverCommitmentArgs{
+				TrimaranSpec: TrimaranSpec{
+					MetricProvider: MetricProviderSpec{
+						Type: "KubernetesMetricsServer",
+					}},
+				SmoothingWindowSize: pointer.Int64Ptr(10),
+				RiskLimitWeights: map[v1.ResourceName]float64{
+					v1.ResourceCPU:    0.2,
+					v1.ResourceMemory: 0.8,
+				},
+			},
+		},
+		{
+			name: "set out of range LowRiskOverCommitmentArgs",
+			config: &LowRiskOverCommitmentArgs{
+				SmoothingWindowSize: pointer.Int64Ptr(10),
+				RiskLimitWeights: map[v1.ResourceName]float64{
+					v1.ResourceCPU:    -1,
+					v1.ResourceMemory: 2,
+				},
+			},
+			expect: &LowRiskOverCommitmentArgs{
+				TrimaranSpec: TrimaranSpec{
+					MetricProvider: MetricProviderSpec{
+						Type: "KubernetesMetricsServer",
+					}},
+				SmoothingWindowSize: pointer.Int64Ptr(10),
+				RiskLimitWeights: map[v1.ResourceName]float64{
+					v1.ResourceCPU:    0.5,
+					v1.ResourceMemory: 0.5,
+				},
+			},
+		},
+		{
 			name:   "empty config NodeResourceTopologyMatchArgs",
 			config: &NodeResourceTopologyMatchArgs{},
 			expect: &NodeResourceTopologyMatchArgs{
 				ScoringStrategy: &ScoringStrategy{
 					Type:      LeastAllocated,
 					Resources: defaultResourceSpec,
+				},
+				Cache: &NodeResourceTopologyCache{
+					ForeignPodsDetect: &defaultForeignPodsDetect,
+					ResyncMethod:      &defaultResyncMethod,
+					InformerMode:      &defaultInformerMode,
 				},
 			},
 		},
@@ -188,6 +253,25 @@ func TestSchedulingDefaults(t *testing.T) {
 				Namespaces:          []string{"n2"},
 				WeightsName:         pointer.StringPtr("latency"),
 				NetworkTopologyName: pointer.StringPtr("nt-latency-costs"),
+			},
+		},
+		{
+			name:   "empty config SySchedArgs",
+			config: &SySchedArgs{},
+			expect: &SySchedArgs{
+				DefaultProfileNamespace: pointer.StringPtr("default"),
+				DefaultProfileName:      pointer.StringPtr("all-syscalls"),
+			},
+		},
+		{
+			name: "set non default SySchedArgs",
+			config: &SySchedArgs{
+				DefaultProfileNamespace: pointer.StringPtr("default"),
+				DefaultProfileName:      pointer.StringPtr("all-syscalls"),
+			},
+			expect: &SySchedArgs{
+				DefaultProfileNamespace: pointer.StringPtr("default"),
+				DefaultProfileName:      pointer.StringPtr("all-syscalls"),
 			},
 		},
 	}
